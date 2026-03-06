@@ -1,0 +1,509 @@
+---
+title: 'Broadcasts'
+description: 'Follow live chess tournaments and events with real-time game broadcasts on Lichess'
+---
+
+## Overview
+
+Lichess Broadcasts allows anyone to follow top-level chess tournaments in real-time. From World Championship matches to local club events, broadcasts provide live game updates, computer analysis, and commentary - bringing elite chess to spectators worldwide.
+
+<Note>
+  Broadcasts are a special type of study optimized for live tournament coverage. They automatically sync with tournament games and update in real-time.
+</Note>
+
+## What is a Broadcast?
+
+A broadcast consists of:
+
+- **Live game boards**: Follow multiple games simultaneously  
+- **Real-time updates**: Moves appear within seconds of being played
+- **Computer analysis**: Stockfish evaluation runs on all games
+- **Player information**: Names, ratings, FIDE IDs, photos
+- **Tournament standings**: Current scores and pairings
+- **Commentary**: Annotated analysis by titled players (optional)
+
+## Viewing Broadcasts
+
+### Finding Broadcasts
+
+<Steps>
+  <Step title="Browse Broadcast Page">
+    Click "Watch" → "Broadcasts" or visit lichess.org/broadcast
+  </Step>
+  
+  <Step title="View Live Events">
+    Active broadcasts appear at the top marked "LIVE"
+  </Step>
+  
+  <Step title="Check Schedule">
+    Upcoming broadcasts listed with start times
+  </Step>
+  
+  <Step title="Browse Archives">
+    Past broadcasts remain available with all games
+  </Step>
+</Steps>
+
+### Broadcast Interface
+
+<CardGroup cols={2}>
+  <Card title="Game Board Grid" icon="chess-board">
+    View multiple games in a grid layout
+  </Card>
+  
+  <Card title="Featured Board" icon="tv">
+    Focus on one game with full analysis board
+  </Card>
+  
+  <Card title="Move List" icon="list">
+    Follow move-by-move notation
+  </Card>
+  
+  <Card title="Evaluation Graph" icon="chart-line">
+    See position evaluation over time
+  </Card>
+</CardGroup>
+
+### Viewing Options
+
+- **Board size**: Adjust board size for your screen
+- **Board orientation**: Flip board perspective
+- **Auto-advance**: Follow the latest moves automatically
+- **Computer lines**: Show engine analysis and best moves
+- **Opening book**: Display opening name and theory
+- **Clock times**: View remaining time for each player
+
+## Broadcast Structure
+
+### Tournament Groups
+
+Multi-round events organized as groups:
+
+**Example: World Championship**
+- World Championship 2024 (Group)
+  - Round 1 (Broadcast)
+  - Round 2 (Broadcast)  
+  - Round 3 (Broadcast)
+  - etc.
+
+### Individual Broadcasts
+
+Each broadcast covers:
+- One round of a tournament
+- Multiple simultaneous games
+- All games from one day
+- A complete tournament (for single-day events)
+
+### Chapters
+
+Each game within a broadcast is a chapter:
+- Automatically named with player names
+- Updates live as moves are played
+- Includes player FIDE IDs and ratings
+- Shows game result when finished
+- Tagged with board numbers
+
+## Creating Broadcasts
+
+<Note>
+  Anyone can create broadcasts on Lichess - from World Championship matches to local club tournaments. It's completely free.
+</Note>
+
+### Getting Started
+
+<Steps>
+  <Step title="Create Broadcast">
+    Navigate to "Watch" → "Broadcasts" → "New broadcast"
+  </Step>
+  
+  <Step title="Configure Tournament">
+    - Tournament name and description
+    - Event dates
+    - Number of rounds
+    - Optional: Team information, players, sponsors
+  </Step>
+  
+  <Step title="Set Up Game Source">
+    Choose how games will be imported (see below)
+  </Step>
+  
+  <Step title="Customize Display">
+    - Upload tournament logo
+    - Add markdown descriptions
+    - Configure visibility settings
+  </Step>
+</Steps>
+
+### Game Source Options
+
+<Accordion title="PGN URL (Most Common)">
+  Automatically sync from a PGN file URL:
+  - Provide URL to PGN file (must be publicly accessible)
+  - Lichess polls URL every few seconds
+  - Games update automatically as PGN updates
+  - Supports multiple formats (single game or multi-game PGN)
+  - Works with DGT boards, chess servers, and tournament software
+</Accordion>
+
+<Accordion title="Manual PGN Entry">
+  Manually paste games:
+  - Copy PGN text and paste into form
+  - Useful for quick updates or small tournaments
+  - More labor-intensive for multi-game events
+  - Good for adding commentary and annotations
+</Accordion>
+
+<Accordion title="Lichess Games">
+  Broadcast Lichess games:
+  - Link to games played on Lichess
+  - Perfect for online tournaments
+  - Automatic synchronization
+  - No external software needed
+</Accordion>
+
+<Accordion title="Chess.com Integration">
+  Import from Chess.com tournaments:
+  - Provide tournament ID or URL
+  - Games sync automatically
+  - Useful for covering online events
+</Accordion>
+
+### PGN Requirements
+
+For automatic sync, PGN must include:
+
+- Standard PGN format
+- Player names in tags (White, Black)
+- Optional but recommended: FIDE IDs, ratings, board numbers
+- Current position (partial games supported)
+- Clock times (if available)
+
+**Supported sources:**
+- DGT electronic boards
+- Chess-Results.com
+- Tournament management software (Swiss-Manager, ChessBase, etc.)
+- Custom PGN generators
+
+## Broadcast Features
+
+### Real-time Synchronization
+
+Games update automatically:
+- New moves appear within 5-10 seconds
+- Configurable sync interval
+- Handles network interruptions gracefully
+- Shows "last updated" timestamp
+
+### Clock Times
+
+Display remaining time:
+- Extracted from PGN clock tags
+- Updates with each move
+- Shows which player is on move
+- Time pressure indicators
+
+### Computer Analysis
+
+Stockfish evaluates all games:
+- Real-time position evaluation
+- Best move suggestions
+- Multi-line analysis
+- Evaluation bar and graph
+- Optional: Hide analysis until game ends
+
+<Note>
+  Broadcast creators can disable computer analysis during games to prevent spoilers or "cheating" for viewers trying to predict moves.
+</Note>
+
+### Player Information
+
+**Automatic FIDE data integration:**
+- Player photos from FIDE database
+- Current FIDE ratings
+- Titles (GM, IM, FM, etc.)
+- Federation flags
+- Linked to player profiles
+
+### Delay Settings
+
+Add broadcast delay:
+- Prevent viewers from seeing moves immediately
+- Typical delay: 15-60 minutes for top events
+- Protects against external computer assistance
+- Configurable per broadcast
+
+### Reordering Games
+
+Customize game display order:
+- Drag and drop to reorder boards
+- Prioritize featured games
+- Group by team or rating
+- Use "reorder by names" feature for automated sorting
+
+### Filtering Rounds
+
+For multi-round swiss/team tournaments:
+- Filter by round number
+- Show only specific boards
+- Slice games (e.g., boards 1-5, 12-15)
+- Helps focus on relevant games
+
+## Broadcast Management
+
+### Roles and Permissions
+
+<CardGroup cols={2}>
+  <Card title="Creator" icon="user-crown">
+    Full control: edit settings, manage contributors, delete
+  </Card>
+  
+  <Card title="Contributor" icon="user-pen">
+    Can update games, add commentary, manage rounds
+  </Card>
+  
+  <Card title="Viewer" icon="user">
+    Public access to watch games (if broadcast is public)
+  </Card>
+</CardGroup>
+
+### Adding Contributors
+
+1. Open broadcast settings
+2. Enter Lichess username
+3. Contributor can now edit and update
+4. Useful for team coverage
+
+### Editing During Event
+
+**You can modify while live:**
+- Add/edit commentary on moves
+- Fix player names or tags
+- Correct move errors
+- Add annotations and variations
+- Adjust display settings
+
+### Post-Event Cleanup
+
+After tournament ends:
+- Add final commentary and analysis
+- Fix any remaining errors
+- Tag games with notable features
+- Add introduction/conclusion text
+- Mark broadcast as completed
+
+## Broadcast Calendar
+
+Schedule upcoming broadcasts:
+- Shows all scheduled broadcasts
+- Timezone-aware display
+- iCal export for personal calendars
+- Email notifications (for subscribed users)
+- Global calendar of chess events
+
+## Popular Broadcasts
+
+### Major Events on Lichess
+
+<CardGroup cols={2}>
+  <Card title="FIDE Events" icon="crown">
+    World Championship, Candidates, Grand Prix, etc.
+  </Card>
+  
+  <Card title="National Championships" icon="flag">
+    US Championship, European Championship, etc.
+  </Card>
+  
+  <Card title="Team Events" icon="users">
+    Olympiad, European Club Cup, PRO Chess League
+  </Card>
+  
+  <Card title="Junior Events" icon="graduation-cap">
+    World Youth, National Scholastic Championships
+  </Card>
+</CardGroup>
+
+### Community Broadcasts
+
+Anyone can broadcast:
+- Club tournaments
+- School chess events
+- Regional championships
+- Online tournaments
+- Simuls and exhibitions
+
+## Commentary and Analysis
+
+### Adding Commentary
+
+Enhance broadcasts with expert analysis:
+
+<Steps>
+  <Step title="Open Game">
+    Select a game in the broadcast
+  </Step>
+  
+  <Step title="Navigate to Position">
+    Click on the move where you want to comment
+  </Step>
+  
+  <Step title="Add Comment">
+    Write analysis, explanations, or context
+  </Step>
+  
+  <Step title="Add Variations">
+    Show alternative lines and possibilities
+  </Step>
+</Steps>
+
+**Best practices:**
+- Explain key moments and turning points
+- Highlight tactical opportunities
+- Provide strategic context
+- Note opening novelties
+- Summarize game result significance
+
+### Live Commentary
+
+Real-time expert commentary:
+- Titled players annotate as games progress
+- Viewers see commentary moments after moves
+- Educational and entertaining
+- Common for major championship broadcasts
+
+## Broadcast Archives
+
+All broadcasts saved permanently:
+- Browse historical tournaments
+- Search by event name, player, or date
+- Download PGN of all games
+- Study past games with analysis
+- Reference for historical research
+
+## Technical Details
+
+### Sync Mechanism
+
+How automatic sync works:
+
+1. Lichess fetches PGN from URL
+2. Parses game data and moves
+3. Matches games to existing chapters
+4. Updates move list and position
+5. Triggers board updates for viewers
+6. Repeats every 5-20 seconds
+
+### Performance
+
+- Supports hundreds of simultaneous games
+- Thousands of concurrent viewers per broadcast
+- Low latency (typically 5-10 second delay from source)
+- Optimized for mobile and desktop
+
+### DGT Board Integration
+
+Broadcast from electronic boards:
+
+1. Connect DGT board to computer
+2. Use DGT LiveChess software
+3. Configure to output PGN URL
+4. Link Lichess broadcast to URL
+5. Games appear live on Lichess
+
+<Note>
+  DGT boards are commonly used for over-the-board tournament broadcasts, providing automatic move capture.
+</Note>
+
+## Broadcast Discovery
+
+### Homepage Features
+
+Prominent broadcasts appear:
+- Homepage "Live Broadcasts" section
+- Tournament page highlights
+- Featured broadcast widget
+- Notification system for followers
+
+### Following Broadcasts
+
+Subscribe to tournaments:
+- Click "Follow" on broadcast page
+- Receive notifications when rounds start
+- Quick access from your profile
+- Never miss important matches
+
+## Embedding Broadcasts
+
+Embed on external websites:
+
+```html
+<iframe src="https://lichess.org/broadcast/{broadcast-id}"
+        width="600" height="400">
+</iframe>
+```
+
+Great for:
+- Tournament websites
+- Club pages  
+- News articles
+- Chess blogs
+
+## Broadcast vs Study
+
+### When to Use Broadcasts
+
+- **Live tournaments**: Real-time game coverage
+- **Automatic updates**: Games sync from external source
+- **Multiple games**: Covering many games simultaneously
+- **Public events**: Maximum visibility for viewers
+
+### When to Use Studies
+
+- **Deep analysis**: Single game or small collection
+- **Teaching**: Educational content with annotations
+- **Repertoire building**: Opening preparation
+- **Collaboration**: Working with training partners
+
+<Note>
+  Broadcasts are technically a special type of study with extra features for live event coverage.
+</Note>
+
+## Tips for Broadcast Creators
+
+<Steps>
+  <Step title="Test Before Event">
+    Verify PGN source works properly before tournament starts
+  </Step>
+  
+  <Step title="Provide Context">
+    Add tournament description, format, and player info
+  </Step>
+  
+  <Step title="Monitor During Event">
+    Check that games are syncing correctly
+  </Step>
+  
+  <Step title="Fix Errors Promptly">
+    Correct player names or move errors as they occur
+  </Step>
+  
+  <Step title="Add Value">
+    Include commentary, context, or analysis when possible
+  </Step>
+</Steps>
+
+## Related Features
+
+<CardGroup cols={2}>
+  <Card title="Studies" href="/features/studies">
+    Broadcasts are specialized studies for live events
+  </Card>
+  <Card title="Analysis" href="/features/analysis">
+    Analyze broadcast games after completion
+  </Card>
+  <Card title="Games" href="/features/games">
+    Play games inspired by broadcast examples
+  </Card>
+  <Card title="Tournaments" href="/features/tournaments">
+    Participate in tournaments or broadcast them
+  </Card>
+</CardGroup>

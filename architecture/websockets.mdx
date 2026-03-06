@@ -1,0 +1,536 @@
+---
+title: WebSocket Architecture
+description: Real-time communication with lila-ws and Redis pub/sub
+---
+
+## Overview
+
+Lichess handles real-time communication through a separate **WebSocket server** called [lila-ws](https://github.com/lichess-org/lila-ws), which communicates with the main Scala application (lila) via **Redis pub/sub**. This architecture enables horizontal scaling and handles millions of concurrent WebSocket connections.
+
+## Architecture Diagram
+
+```
+┌─────────────┐
+│   Browser   │
+└──────┬──────┘
+       │ WebSocket
+       ↓
+┌─────────────┐
+│    nginx    │  (WebSocket proxy)
+└──────┬──────┘
+       ↓
+┌─────────────┐
+│   lila-ws   │  (WebSocket server)
+│  (Scala 3)  │  - Manages connections
+└──────┬──────┘  - Handles real-time events
+       │
+       │ Redis Pub/Sub
+       ↓
+┌─────────────┐
+│    Redis    │  (Message broker)
+└──────┬──────┘
+       │
+       ↓
+┌─────────────┐
+│    lila     │  (Main application)
+│  (Scala 3)  │  - Game logic
+└─────────────┘  - HTTP requests
+```
+
+## Why Separate WebSocket Server?
+
+### Benefits
+
+**Horizontal scaling**: Run multiple lila-ws instances behind load balancer
+
+**Isolation**: WebSocket connections don't consume resources from main app
+
+**Resilience**: Main app restarts don't drop WebSocket connections
+
+**Performance**: Optimized for connection handling vs. business logic
+
+**Language flexibility**: Could rewrite in different language if needed
+
+### Trade-offs
+
+**Complexity**: Additional service to deploy and monitor
+
+**Latency**: Extra hop through Redis adds ~1-5ms
+
+**Consistency**: Must handle Redis connection failures gracefully
+
+## lila-ws Server
+
+### Technology Stack
+
+- **Language**: Scala 3
+- **HTTP**: Netty-based HTTP server
+- **Concurrency**: Akka actors for connection management
+- **Redis**: Lettuce client for pub/sub
+
+GitHub: [lichess-org/lila-ws](https://github.com/lichess-org/lila-ws)
+
+### Core Responsibilities
+
+<Accordion title="Connection Management">
+
+Maintain WebSocket connections for:
+
+**Game rooms**: Players and spectators watching a game
+- `/watch/{gameId}` - Spectate game
+- `/play/{gameId}` - Play in game
+
+**Tournament rooms**: Tournament participants and viewers
+- `/tournament/{tournamentId}`
+
+**Study rooms**: Collaborative analysis boards
+- `/study/{studyId}`
+
+**User notifications**: Personal event streams
+- `/user/{userId}`
+
+**Lobby**: Players seeking games
+- `/lobby`
+
+**Site-wide**: Global announcements
+- `/site`
+
+</Accordion>
+
+<Accordion title="Message Routing">
+
+lila-ws routes messages between clients and lila:
+
+**Client → lila**:
+```scala
+// Client sends move
+{"t": "move", "d": {"from": "e2", "to": "e4"}}
+
+// lila-ws forwards via Redis to lila
+redis.publish("site-in", payload)
+```
+
+**lila → Client**:
+```scala
+// lila publishes game update
+redis.publish("game:abc123", moveData)
+
+// lila-ws receives from Redis, sends to clients
+socket.send(moveData)
+```
+
+</Accordion>
+
+<Accordion title="Presence Tracking">
+
+lila-ws tracks online users:
+
+```scala
+// Maintains set of online user IDs
+private val onlineUsers: mutable.Set[UserId] = mutable.Set.empty
+
+// Publish online count periodically
+scheduler.scheduleWithFixedDelay(1.second, 1.second):
+  redis.publish("users-online", onlineUsers.size)
+```
+
+Used for:
+- "Online" indicators on profiles
+- Friend online notifications
+- Activity statistics
+
+</Accordion>
+
+### Connection Lifecycle
+
+```scala
+// Simplified connection flow
+
+// 1. Client connects
+GET /watch/abc123 HTTP/1.1
+Upgrade: websocket
+
+// 2. lila-ws accepts connection
+val socket = new Socket(connection, gameId)
+sockets.add(socket)
+
+// 3. Subscribe to Redis channel
+redis.subscribe(s"game:${gameId}")
+
+// 4. Send initial state
+socket.send(JsonData(currentGameState))
+
+// 5. Handle messages
+socket.onMessage: msg =>
+  parseMessage(msg) match
+    case Move(from, to) => 
+      redis.publish("site-in", MoveData(gameId, from, to))
+    case Chat(text) => 
+      redis.publish("site-in", ChatData(gameId, text))
+
+// 6. Client disconnects
+socket.onClose:
+  redis.unsubscribe(s"game:${gameId}")
+  sockets.remove(socket)
+```
+
+## Redis Communication
+
+### Redis Channels
+
+Lichess uses Redis pub/sub with predictable channel patterns:
+
+**Site input** (clients → lila):
+```
+site-in    # All client actions
+```
+
+**Game channels** (lila → clients):
+```
+game:{gameId}           # Game-specific events
+tournament:{tournamentId}
+study:{studyId}
+user:{userId}
+lobby
+site                    # Global announcements
+```
+
+### Message Protocol
+
+Messages use JSON with type discriminator:
+
+```typescript
+// Client to server
+interface ClientMessage {
+  t: string;    // Message type: "move", "chat", "draw", etc.
+  d: unknown;   // Message data
+}
+
+// Server to client
+interface ServerMessage {
+  t: string;    // Event type: "move", "crowd", "end", etc.
+  d: unknown;   // Event data
+}
+```
+
+### Example: Game Move
+
+**1. Client sends move**:
+```json
+{"t": "move", "d": {"u": "e2e4", "b": 1}}
+```
+
+**2. lila-ws publishes to Redis**:
+```scala
+redis.publish("site-in", {
+  "gameId": "abc123",
+  "userId": "player1",
+  "type": "move",
+  "move": "e2e4"
+})
+```
+
+**3. lila validates and processes move**
+
+**4. lila publishes result to Redis**:
+```scala
+redis.publish("game:abc123", {
+  "t": "move",
+  "d": {
+    "ply": 1,
+    "uci": "e2e4",
+    "san": "e4",
+    "fen": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR",
+    "clock": {"white": 600, "black": 600}
+  }
+})
+```
+
+**5. lila-ws broadcasts to all game watchers**
+
+## lila Integration
+
+### Socket Module
+
+The main lila application communicates with lila-ws through the `socket` module:
+
+```scala
+// modules/socket/src/main/Env.scala
+final class Env(
+  appConfig: Configuration,
+  shutdown: CoordinatedShutdown
+)(using Executor, Scheduler):
+  
+  private val redisClient = RedisClient.create(
+    RedisURI.create(appConfig.get[String]("socket.redis.uri"))
+  )
+  
+  val remoteSocket: RemoteSocket = wire[RemoteSocket]
+  
+  // Subscribe to incoming messages from lila-ws
+  remoteSocket.subscribe(
+    "site-in",
+    RemoteSocket.Protocol.In.baseReader
+  )(remoteSocket.baseHandler)
+  
+  // Track online users
+  val onlineIds = OnlineIds(() => remoteSocket.onlineUserIds.get)
+```
+
+### RemoteSocket API
+
+```scala
+final class RemoteSocket(
+  redisClient: RedisClient,
+  lifecycle: play.api.inject.ApplicationLifecycle
+)(using Executor):
+  
+  // Publish message to specific channel
+  def publish(channel: String, data: JsonData): Unit =
+    redis.publish(channel, Json.stringify(data))
+  
+  // Send to all clients in a game
+  def sendToGame(gameId: GameId, data: JsonData): Unit =
+    publish(s"game:$gameId", data)
+  
+  // Send to specific user
+  def sendToUser(userId: UserId, data: JsonData): Unit =
+    publish(s"user:$userId", data)
+  
+  // Broadcast to all connected clients
+  def broadcast(data: JsonData): Unit =
+    publish("site", data)
+  
+  // Get set of online user IDs
+  def onlineUserIds: Future[Set[UserId]] =
+    // lila-ws periodically publishes online user count
+    Future.successful(cachedOnlineUsers)
+```
+
+### Round Module Integration
+
+The `round` module uses sockets for live game updates:
+
+```scala
+// modules/round/src/main/Env.scala
+final class Env(
+  socketKit: lila.core.socket.ParallelSocketKit,
+  // ...
+):
+  
+  // Notify players and spectators of move
+  def broadcastMove(game: Game, move: Move, fen: Fen): Unit =
+    socketKit.sendToGame(game.id, Json.obj(
+      "t" -> "move",
+      "d" -> Json.obj(
+        "ply" -> game.ply,
+        "uci" -> move.uci,
+        "san" -> move.san,
+        "fen" -> fen,
+        "clock" -> game.clock.map(clockJson)
+      )
+    ))
+```
+
+## WebSocket Message Types
+
+### Game Room Messages
+
+**Client → Server**:
+
+- `move` - Player makes a move
+- `rematch` - Player offers rematch
+- `takeback` - Request takeback
+- `draw` - Offer/accept draw
+- `resign` - Resign game
+- `abort` - Abort game
+- `moretime` - Give opponent more time
+- `palantir` - Premium user sees opponent's time usage
+
+**Server → Client**:
+
+- `move` - Move made (includes fen, clock, etc.)
+- `end` - Game ended (winner, reason)
+- `crowd` - Spectator count changed
+- `clock` - Clock sync
+- `gone` - Player disconnected
+- `goneIn` - Player will be considered gone soon
+- `premove` - Premove acknowledged
+
+### Tournament Room Messages
+
+**Server → Client**:
+
+- `reload` - Tournament data changed (refetch)
+- `redirect` - Player should join game
+- `standing` - Leaderboard update
+
+### Lobby Messages
+
+**Client → Server**:
+
+- `join` - Join lobby pool
+- `cancel` - Leave lobby pool
+
+**Server → Client**:
+
+- `redirect` - Game found, join it
+- `pools` - Pool counts updated
+
+## Scalability
+
+### Horizontal Scaling
+
+Multiple lila-ws instances can run simultaneously:
+
+```
+┌──────────┐
+│  nginx   │  (Load balancer)
+└────┬─────┘
+     ├──────────┬──────────┐
+     ↓          ↓          ↓
+┌─────────┐┌─────────┐┌─────────┐
+│ lila-ws ││ lila-ws ││ lila-ws │
+│  node1  ││  node2  ││  node3  │
+└────┬────┘└────┬────┘└────┬────┘
+     └──────────┴──────────┘
+              ↓
+         ┌────────┐
+         │ Redis  │  (Shared pub/sub)
+         └────────┘
+```
+
+**Sticky sessions**: Nginx routes user to same lila-ws node (optional)
+
+**Failover**: If node dies, clients reconnect to another node
+
+### Connection Limits
+
+Each lila-ws instance handles:
+- **100,000+** concurrent WebSocket connections
+- **10,000+** messages per second
+
+Production deployment typically runs 3-5 lila-ws instances.
+
+### Redis Performance
+
+Redis pub/sub can handle:
+- **100,000+** messages/second
+- Sub-millisecond latency
+
+**Redis Cluster** used for high availability:
+- 3+ Redis nodes with replication
+- Automatic failover
+- Sentinel for monitoring
+
+## Client-Side WebSocket
+
+### TypeScript Socket Client
+
+Frontend uses a custom WebSocket wrapper:
+
+```typescript
+// ui/analyse/src/socket.ts
+import { make as makeSocket } from 'lib/socket';
+
+export function make(send: SocketSend, ctrl: AnalyseCtrl): Socket {
+  const socket = makeSocket(
+    `/watch/${ctrl.data.game.id}`,
+    ctrl.socketReceive
+  );
+  
+  return {
+    send: socket.send,
+    receive: socket.receive,
+    destroy: socket.destroy
+  };
+}
+```
+
+### Socket Library
+
+```typescript
+// ui/lib/src/socket.ts
+export function make(url: string, onMessage: (data: any) => void) {
+  let ws: WebSocket;
+  let pinging = false;
+  
+  const connect = () => {
+    ws = new WebSocket(`wss://${location.host}${url}`);
+    
+    ws.onopen = () => {
+      console.log('Socket connected');
+      startPinging();
+    };
+    
+    ws.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+      onMessage(data);
+    };
+    
+    ws.onclose = () => {
+      console.log('Socket closed, reconnecting...');
+      stopPinging();
+      setTimeout(connect, 2000);  // Reconnect after 2s
+    };
+  };
+  
+  const send = (type: string, data: any) => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ t: type, d: data }));
+    }
+  };
+  
+  // Keep-alive pings
+  const startPinging = () => {
+    pinging = true;
+    const ping = () => {
+      if (pinging && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ t: 'p' }));  // Ping
+        setTimeout(ping, 2000);
+      }
+    };
+    ping();
+  };
+  
+  connect();
+  return { send, destroy: () => ws.close() };
+}
+```
+
+### Reconnection Strategy
+
+- **Automatic reconnect**: Exponential backoff (2s, 4s, 8s, ...)
+- **State recovery**: Server sends full state on reconnect
+- **Buffering**: Queue messages while disconnected
+
+## Monitoring
+
+### Metrics
+
+Key metrics tracked:
+
+- **Connection count**: Active WebSocket connections per node
+- **Message rate**: Messages/second in/out
+- **Redis lag**: Time between publish and receive
+- **Reconnection rate**: Clients reconnecting (indicates issues)
+- **Error rate**: Failed message parsing, Redis timeouts
+
+### Health Checks
+
+```scala
+// lila-ws health endpoint
+GET /health
+
+{
+  "connections": 42315,
+  "redis": "connected",
+  "uptime": 86400
+}
+```
+
+## See Also
+
+- [Backend Architecture](/architecture/backend) - lila application structure
+- [Frontend Architecture](/architecture/frontend) - Client-side socket usage
+- [Deployment](/architecture/deployment) - Production WebSocket infrastructure

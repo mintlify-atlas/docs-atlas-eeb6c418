@@ -1,0 +1,293 @@
+---
+title: Backend Architecture
+description: Understanding Lichess's Play Framework and Scala 3 backend architecture
+---
+
+## Overview
+
+Lichess's backend is built with **Scala 3** and the **Play Framework 2.8**, following a highly modular architecture that separates concerns into independent modules. The server is fully asynchronous, leveraging Scala Futures and Akka Streams for high-performance concurrent operations.
+
+## Technology Stack
+
+### Core Technologies
+
+- **Scala 3**: Primary backend language providing type safety and functional programming features
+- **Play Framework 2.8**: Web framework handling HTTP requests and routing
+- **Akka**: Actor system and streaming library for concurrency
+- **Macwire**: Compile-time dependency injection
+- **Scalatags**: Type-safe HTML templating
+- **ReactiveMongo**: Asynchronous MongoDB driver
+
+### Key Dependencies
+
+```scala
+// From build.sbt
+libraryDependencies ++= Seq(
+  akka.bundle,           // Akka actors and streams
+  playWs.bundle,         // Web services client
+  macwire.bundle,        // Dependency injection
+  reactivemongo.driver,  // MongoDB async driver
+  kamon.core,            // Application monitoring
+  scaffeine, caffeine,   // In-memory caching
+  lettuce               // Redis client
+)
+```
+
+## Modular Architecture
+
+### Module System
+
+Lichess is organized into **85+ independent modules**, each responsible for a specific domain. The `build.sbt` defines module dependencies in a strict hierarchy:
+
+```
+Level 1: core, coreI18n
+Level 2: ui, common, tree
+Level 3: db, room, search
+Level 4: memo, rating
+Level 5: game, gathering, study, user, puzzle, analyse
+Level 6+: tournament, round, relay, security, etc.
+```
+
+This dependency hierarchy ensures clean separation and prevents circular dependencies.
+
+### Key Modules
+
+<Accordion title="Core Modules">
+
+**core**: Foundation types and interfaces used across all modules
+
+**common**: Shared utilities, caching, text processing
+
+**db**: MongoDB connection management and database abstractions
+
+**memo**: Caching layer with Caffeine/Scaffeine integration
+
+**i18n**: Internationalization supporting 140+ languages
+
+</Accordion>
+
+<Accordion title="Game Domain Modules">
+
+**game**: Game data models, moves, PGN handling
+- Location: `modules/game/src/main/`
+- Dependencies: tree, rating, memo
+- Features: Game compression, move validation, game queries
+
+**round**: Live game management and real-time play
+- Location: `modules/round/src/main/`
+- Dependencies: room, game, user, playban, pref, chat
+- Features: Move processing, game lifecycle, actor-based game instances
+
+**analyse**: Computer analysis and engine evaluation
+- Dependencies: tree, memo, ui
+- Integrates with Fishnet for Stockfish analysis
+
+</Accordion>
+
+<Accordion title="User & Social Modules">
+
+**user**: User accounts, authentication, profiles
+
+**security**: Authentication, authorization, rate limiting
+
+**chat**: Real-time chat functionality
+
+**msg**: Direct messaging between users
+
+**relation**: User relationships (follow, block)
+
+**team**: Team management and membership
+
+</Accordion>
+
+<Accordion title="Game Modes & Features">
+
+**tournament**: Arena and Swiss tournaments
+
+**simul**: Simultaneous exhibitions
+
+**puzzle**: Tactical puzzles and training
+
+**study**: Shared analysis boards and studies
+
+**relay**: Broadcasting live games
+
+</Accordion>
+
+## Application Initialization
+
+The application bootstraps through a dependency injection hierarchy defined in `app/Env.scala`:
+
+```scala
+final class Env(
+    val config: Configuration,
+    val controllerComponents: ControllerComponents,
+    environment: Environment,
+    shutdown: akka.actor.CoordinatedShutdown
+)(using val system: akka.actor.ActorSystem, executor: Executor):
+  
+  // Core infrastructure
+  val mongo: lila.db.Env = wire[lila.db.Env]
+  val memo: lila.memo.Env = wire[lila.memo.Env]
+  val socket: lila.socket.Env = wire[lila.socket.Env]
+  
+  // Domain modules (85+ modules)
+  val user: lila.user.Env = wire[lila.user.Env]
+  val game: lila.game.Env = wire[lila.game.Env]
+  val round: lila.round.Env = wire[lila.round.Env]
+  val tournament: lila.tournament.Env = wire[lila.tournament.Env]
+  // ... many more modules
+```
+
+**Macwire** performs compile-time dependency injection, ensuring type safety and eliminating runtime reflection overhead.
+
+## Asynchronous Processing
+
+### Scala Futures
+
+All I/O operations are non-blocking and return `Future[T]`:
+
+```scala
+// Typical pattern for async operations
+def getGame(id: GameId): Future[Option[Game]] = 
+  gameRepo.find(id)
+
+def analyzeGame(game: Game): Future[Analysis] =
+  for
+    moves <- Future.successful(game.moves)
+    eval  <- fishnetApi.analyze(moves)
+  yield Analysis(game, eval)
+```
+
+### Akka Streams
+
+Lichess uses Akka Streams for processing continuous data flows:
+
+- Real-time game event broadcasting
+- Large dataset processing (exports, database migrations)
+- Backpressure handling for external API integrations
+
+### Actor System
+
+Critical real-time features use Akka actors:
+
+- **Game instances**: Each active game runs in its own actor
+- **Tournament management**: Tournament lifecycle managed by actors
+- **Message routing**: Event bus for cross-module communication
+
+## Routing
+
+Play Framework's routing is defined in `conf/routes` and split across multiple files:
+
+```scala
+// conf/routes
+GET  /game/:id         controllers.Game.show(id: GameId)
+POST /game/:id/move    controllers.Round.move(id: GameId)
+GET  /tournament/:id   controllers.Tournament.show(id: TourId)
+
+# Include sub-routes
+->   /team             team.Routes
+->   /clas             clas.Routes
+```
+
+Routes are type-safe with custom parameter extractors for domain types like `GameId`, `UserId`, etc.
+
+## Controllers
+
+Controllers follow Play Framework conventions:
+
+```scala
+final class Game(env: Env) extends LilaController(env):
+  
+  def show(id: GameId) = Open:
+    gameRepo.find(id).flatMap:
+      case None => NotFound
+      case Some(game) => 
+        val data = gameData(game)
+        Ok(views.game.show(game, data))
+```
+
+Key controller patterns:
+- **Action composition**: Authentication, rate limiting via action builders
+- **Async actions**: All actions return `Future[Result]`
+- **JSON responses**: Game API endpoints return Play JSON
+
+## Performance Optimizations
+
+<Accordion title="Caching Strategy">
+
+**Scaffeine** (Scala wrapper for Caffeine) provides high-performance in-memory caching:
+
+```scala
+val userCache = scaffeine()
+  .maximumSize(100_000)
+  .expireAfterWrite(20.minutes)
+  .build[UserId, User]()
+```
+
+Cached data includes:
+- User profiles and preferences
+- Game metadata
+- Leaderboards and rankings
+- Feature flags and settings
+
+</Accordion>
+
+<Accordion title="Database Query Optimization">
+
+- **Projection**: Only fetch required fields from MongoDB
+- **Indexing**: Extensive indexes on frequently queried fields
+- **Batching**: Bulk operations for mass updates
+- **Connection pooling**: ReactiveMongo manages connection pool
+
+</Accordion>
+
+<Accordion title="Monitoring">
+
+**Kamon** integration provides:
+- Request tracing and latency metrics
+- JVM metrics (memory, GC, threads)
+- Custom business metrics
+- InfluxDB and Prometheus export
+
+</Accordion>
+
+## Chess Logic
+
+Pure chess logic is isolated in the [scalachess](https://github.com/lichess-org/scalachess) submodule:
+
+- Move generation and validation
+- Chess variants (Chess960, Crazyhouse, etc.)
+- PGN parsing and generation
+- Position evaluation basics
+
+This separation keeps game rules independent of server infrastructure.
+
+## Configuration
+
+Configuration uses HOCON format in `conf/base.conf`:
+
+```hocon
+http.port = 9663
+mongodb {
+  uri = "mongodb://127.0.0.1:27017?appName=lila"
+}
+net {
+  domain = "localhost:9663"
+  socket.domains = ["localhost:9664"]
+}
+akka {
+  actor {
+    default-dispatcher.fork-join-executor {
+      parallelism-max = 64
+    }
+  }
+}
+```
+
+## See Also
+
+- [Frontend Architecture](/architecture/frontend) - TypeScript and Snabbdom UI
+- [Database Architecture](/architecture/database) - MongoDB data models
+- [WebSocket Architecture](/architecture/websockets) - Real-time communication
+- [Deployment Architecture](/architecture/deployment) - Production infrastructure

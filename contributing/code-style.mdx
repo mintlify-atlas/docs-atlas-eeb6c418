@@ -1,0 +1,409 @@
+---
+title: Code Style Guide
+description: Coding conventions and style rules for Lichess
+---
+
+Lichess maintains consistent code style across its Scala backend and TypeScript frontend. Follow these guidelines to ensure your contributions match the codebase conventions.
+
+## Scala Style
+
+Lichess uses Scala 3 with automatic formatting via scalafmt.
+
+### Scalafmt Configuration
+
+The project uses scalafmt version `3.10.7` with the following key settings:
+
+```scala .scalafmt.conf
+version = "3.10.7"
+runner.dialect = scala3
+
+align.preset = none
+maxColumn = 110
+spaces.inImportCurlyBraces = true
+```
+
+### Formatting Rules
+
+<CodeGroup>
+```scala Max Column Width
+// Maximum 110 characters per line
+maxColumn = 110
+```
+
+```scala Import Spacing
+// Add spaces inside import braces
+import { foo, bar }  // Good
+import {foo, bar}    // Bad
+```
+
+```scala Scala 3 Syntax
+// Convert to new Scala 3 syntax
+rewrite.scala3.convertToNewSyntax = yes
+rewrite.scala3.removeOptionalBraces = yes
+```
+</CodeGroup>
+
+### Rewrite Rules
+
+Scalafmt automatically applies these transformations:
+
+#### 1. Sort Modifiers
+
+```scala
+// Modifiers are automatically sorted
+private final def foo() = ???  // Good order
+final private def foo() = ???  // Auto-fixed
+```
+
+#### 2. Avoid Infix Notation
+
+```scala
+// Avoid infix notation (auto-converted)
+list.map(x => x + 1)  // Good
+list map (x => x + 1) // Auto-fixed to method call syntax
+```
+
+#### 3. String Interpolation
+
+```scala
+// Redundant braces in string interpolation removed
+s"Hello ${name}"     // Auto-fixed to s"Hello $name"
+s"Hello $name"      // Good
+```
+
+#### 4. Import Cleanup
+
+```scala
+// Redundant import selectors removed automatically
+import foo.{Bar => Bar}  // Auto-fixed to import foo.Bar
+import foo.Bar           // Good
+```
+
+### File-Specific Overrides
+
+Build files use Scala 2.13 dialect:
+
+```scala
+// build.sbt and project/** files
+runner.dialect = scala213
+```
+
+### Running Scalafmt
+
+<CodeGroup>
+```bash Format All Files
+./lila.sh scalafmtAll
+```
+
+```bash Check Formatting
+./lila.sh scalafmtCheckAll
+```
+
+```bash Format Specific File
+./lila.sh scalafmt path/to/file.scala
+```
+</CodeGroup>
+
+<Tip>
+Most IDEs can run scalafmt automatically on save. Configure your editor to use the project's `.scalafmt.conf` file.
+</Tip>
+
+## TypeScript Style
+
+Lichess uses oxlint for TypeScript/JavaScript linting.
+
+### Oxlint Configuration
+
+The project uses oxlint with plugins for promises, TypeScript, and unicorn rules:
+
+```json .oxlintrc.json
+{
+  "plugins": ["promise", "typescript", "unicorn"],
+  "env": {
+    "builtin": true
+  },
+  "ignorePatterns": ["**/dist/", "**/public"]
+}
+```
+
+### Key Rules
+
+#### Variable Declarations
+
+```typescript
+// Prefer const/let over var
+const name = 'Lichess';  // Good
+let count = 0;           // Good
+var flag = true;         // Warning: use const or let
+```
+
+#### Imports
+
+```typescript
+// No duplicate imports
+import { foo } from './module';
+import { bar } from './module';  // Error: combine into one import
+
+// Correct:
+import { foo, bar } from './module';
+```
+
+#### Unused Variables
+
+```typescript
+// Prefix unused variables with underscore
+function handler(_event: Event, data: any) {
+  // _event is intentionally unused
+  console.log(data);
+}
+```
+
+Variables matching these patterns are ignored:
+- `varsIgnorePattern: "^_"`
+- `argsIgnorePattern: "^_"`
+- `caughtErrorsIgnorePattern: "^_"`
+
+#### Promises
+
+```typescript
+// Always reject with Error objects
+Promise.reject(new Error('Something went wrong'));  // Good
+Promise.reject('error message');                     // Error
+
+// No callbacks in promises
+promise.then(data => {
+  callback(data);  // Error: avoid mixing callbacks and promises
+});
+
+// No multiple resolves
+Promise((resolve) => {
+  resolve(1);
+  resolve(2);  // Error: promise already resolved
+});
+```
+
+#### TypeScript-Specific Rules
+
+```typescript
+// Use Record instead of index signatures when possible
+type Config = Record<string, string>;  // Good
+type Config = { [key: string]: string };  // Error
+
+// No empty interfaces
+interface Props {}  // Error: use type alias or add properties
+
+// No unnecessary type assertions
+const num = 5 as number;  // Error: already a number
+const num = 5;            // Good
+
+// No unnecessary template expressions
+const str = `${name}`;    // Error: use name directly
+const str = name;         // Good
+```
+
+#### Modern Array Methods
+
+```typescript
+// Prefer modern array methods
+arr.flat()              // Good
+arr.reduce((a,b) => a.concat(b), [])  // Error: use flat()
+
+arr.flatMap(x => [x, x * 2])  // Good
+arr.map(x => [x, x * 2]).flat()  // Error: use flatMap()
+
+arr.some(x => x > 5)    // Good
+arr.find(x => x > 5) !== undefined  // Error: use some()
+```
+
+### Restricted Global Variables
+
+<Warning>
+Direct access to window globals is restricted. Use explicit `window.` or `document.` prefixes to avoid accidental global usage.
+</Warning>
+
+The configuration restricts 200+ window globals like `addEventListener`, `focus`, `blur`, etc. to prevent implicit global access.
+
+### File-Specific Overrides
+
+Utility scripts have relaxed rules:
+
+```json
+{
+  "files": ["bin/**", "cron/**"],
+  "rules": {
+    "no-unused-vars": "off",
+    "unicorn/prefer-array-some": "off"
+  }
+}
+```
+
+### Running Oxlint
+
+<CodeGroup>
+```bash Lint All Files
+pnpm lint
+```
+
+```bash Auto-fix Issues
+pnpm lint --fix
+```
+
+```bash Lint Specific Directory
+oxlint ui/analyse/src
+```
+</CodeGroup>
+
+## CSS/SCSS Style
+
+Lichess uses stylelint for CSS and SCSS linting.
+
+### Stylelint Configuration
+
+```json .stylelintrc.json
+{
+  "plugins": ["stylelint-scss"],
+  "extends": "stylelint-config-standard-scss"
+}
+```
+
+### Key Rules
+
+#### Color Notation
+
+```scss
+// Use legacy color notation with numbers for alpha
+rgba(255, 0, 0, 0.5)  // Good
+rgb(255 0 0 / 50%)    // Error: use legacy notation
+
+// Hue as number, not degree
+hsl(120, 100%, 50%)   // Good
+hsl(120deg, 100%, 50%)  // Error: use number
+```
+
+#### Variable Naming
+
+```scss
+// Any pattern allowed for variables and classes
+$primaryColor: #3893E8;  // Allowed
+$primary-color: #3893E8;  // Also allowed
+```
+
+The configuration disables pattern enforcement for:
+- `custom-property-pattern`
+- `selector-class-pattern`
+- `selector-id-pattern`
+- `scss/dollar-variable-pattern`
+
+#### SCSS Features
+
+```scss
+// SCSS global functions allowed (color functions, etc.)
+.button {
+  background: darken($primary, 10%);  // Allowed
+}
+
+// Operators can span multiple lines
+.container {
+  width: $base-width
+    + $margin;  // Allowed
+}
+```
+
+### Running Stylelint
+
+<CodeGroup>
+```bash Lint All Styles
+pnpm stylelint "**/*.scss"
+```
+
+```bash Auto-fix Issues
+pnpm stylelint "**/*.scss" --fix
+```
+</CodeGroup>
+
+## Editor Integration
+
+Configure your editor to use these tools automatically:
+
+<AccordionGroup>
+  <Accordion title="VS Code">
+    Install these extensions:
+    - Scala (Metals)
+    - oxlint
+    - Stylelint
+
+    Configure format on save in settings:
+    ```json
+    {
+      "editor.formatOnSave": true,
+      "scalafmt.configFilePath": ".scalafmt.conf"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="IntelliJ IDEA">
+    - Enable scalafmt: Settings → Editor → Code Style → Scala → Scalafmt
+    - Install oxlint plugin from marketplace
+    - Enable Stylelint: Settings → Languages → Style Sheets → Stylelint
+  </Accordion>
+
+  <Accordion title="Neovim/Vim">
+    Use formatters via null-ls or conform.nvim:
+    - scalafmt for Scala
+    - oxlint for TypeScript
+    - stylelint for SCSS
+
+    Example with null-ls:
+    ```lua
+    require("null-ls").setup({
+      sources = {
+        require("null-ls").builtins.formatting.scalafmt,
+        require("null-ls").builtins.diagnostics.oxlint,
+        require("null-ls").builtins.formatting.stylelint,
+      },
+    })
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Pre-commit Checks
+
+Before committing, ensure:
+
+<Steps>
+  <Step title="Run formatters">
+    ```bash
+    ./lila.sh scalafmtAll
+    pnpm lint --fix
+    pnpm stylelint "**/*.scss" --fix
+    ```
+  </Step>
+  
+  <Step title="Check for errors">
+    ```bash
+    ./lila.sh scalafmtCheckAll
+    pnpm lint
+    ```
+  </Step>
+  
+  <Step title="Run tests">
+    ```bash
+    ./lila.sh test
+    ```
+  </Step>
+</Steps>
+
+<Info>
+CI will automatically check code style on all pull requests. Fix any style violations before requesting review.
+</Info>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Pull Request Guidelines" icon="code-pull-request" href="/contributing/guidelines">
+    Learn how to submit your code
+  </Card>
+  <Card title="Contributing Overview" icon="hand-wave" href="/contributing/overview">
+    Back to contributing overview
+  </Card>
+</CardGroup>

@@ -1,0 +1,509 @@
+---
+title: Frontend Architecture
+description: Understanding Lichess's TypeScript and Snabbdom-based UI architecture
+---
+
+## Overview
+
+Lichess's frontend is built with **TypeScript** and **Snabbdom**, a lightweight virtual DOM library. The UI is organized as a pnpm monorepo with 35+ packages, each handling specific features. The architecture emphasizes performance, modularity, and real-time updates.
+
+## Technology Stack
+
+### Core Technologies
+
+- **TypeScript 5.9+**: Type-safe JavaScript development
+- **Snabbdom 3.5.1**: Minimal virtual DOM library for efficient rendering
+- **esbuild**: Ultra-fast JavaScript bundler
+- **pnpm**: Fast, disk-efficient package manager
+- **Chessground**: Custom chess board UI component
+- **Sass**: CSS preprocessing
+
+### Key Libraries
+
+```json
+// package.json
+{
+  "dependencies": {
+    "@lichess-org/chessground": "^10.0.2",
+    "@lichess-org/pgn-viewer": "^2.5.9",
+    "snabbdom": "3.5.1",
+    "chessops": "^0.15",
+    "typescript": "^5.9.3"
+  }
+}
+```
+
+## Monorepo Structure
+
+The UI is organized as a **pnpm workspace** defined in `/pnpm-workspace.yaml`:
+
+```
+ui/
+├── .build/          # Build system (esbuild configuration)
+├── @types/          # TypeScript type definitions
+├── analyse/         # Analysis board
+├── round/           # Live game interface
+├── lobby/           # Game lobby
+├── tournament/      # Tournament UI
+├── puzzle/          # Tactics trainer
+├── study/           # Study/analysis sharing (via analyse)
+├── site/            # Core site functionality
+├── lib/             # Shared utilities and components
+├── bits/            # Small reusable UI components
+└── [30+ more packages]
+```
+
+### Package Dependencies
+
+Packages declare dependencies using workspace protocol:
+
+```json
+// ui/analyse/package.json
+{
+  "name": "analyse",
+  "dependencies": {
+    "lib": "workspace:*",
+    "@lichess-org/chessground": "^10.0.2",
+    "snabbdom": "3.5.1"
+  }
+}
+```
+
+## Virtual DOM with Snabbdom
+
+### Why Snabbdom?
+
+Lichess chose Snabbdom for its:
+- **Minimal size**: ~200 lines of core code
+- **High performance**: Fast diffing algorithm
+- **Flexibility**: Extensible module system
+- **Simplicity**: Easy to understand and debug
+
+### Snabbdom Basics
+
+Snabbdom uses a hyperscript function `h()` to create virtual DOM nodes:
+
+```typescript
+import { h, type VNode } from 'snabbdom';
+
+// Create virtual DOM node
+const vnode: VNode = h('div.game-board', {
+  attrs: { 'data-game-id': gameId },
+  on: { click: handleClick }
+}, [
+  h('span.player', playerName),
+  h('div.board', renderBoard())
+]);
+```
+
+### View Functions
+
+UI components are pure functions returning VNodes:
+
+```typescript
+// ui/analyse/src/view/main.ts
+import { type VNode } from 'lib/view';
+import type AnalyseCtrl from '../ctrl';
+
+export default function (deps?: typeof studyDeps) {
+  return function (ctrl: AnalyseCtrl): VNode {
+    if (ctrl.nvui) return ctrl.nvui.render(deps);
+    else if (deps && ctrl.study) return studyView(ctrl, ctrl.study, deps);
+    else return analyseView(ctrl, deps);
+  };
+}
+
+function analyseView(ctrl: AnalyseCtrl, deps?: typeof studyDeps): VNode {
+  const ctx = viewContext(ctrl, deps);
+  return renderMain(
+    ctx,
+    renderBoard(ctx),
+    renderTools(ctx),
+    renderControls(ctrl),
+    renderUnderboard(ctx)
+  );
+}
+```
+
+### Rendering Cycle
+
+1. **State change**: User action or server event updates controller state
+2. **Redraw trigger**: Controller calls `redraw()` function
+3. **View render**: View function generates new VNode tree
+4. **Diff & patch**: Snabbdom diffs against previous VNode and patches DOM
+
+```typescript
+// Typical controller pattern
+export class AnalyseCtrl {
+  redraw: () => void;  // Injected by bootstrap
+  
+  makeMove(move: Move): void {
+    this.tree.addMove(move);
+    this.redraw();  // Triggers re-render
+  }
+}
+```
+
+## UI Package Architecture
+
+### Core Pattern: MVC-style Controllers
+
+Most UI packages follow an MVC-inspired pattern:
+
+```
+analyse/
+├── src/
+│   ├── ctrl.ts          # Main controller class
+│   ├── interfaces.ts    # TypeScript interfaces
+│   ├── view/
+│   │   ├── main.ts      # Root view function
+│   │   ├── controls.ts  # Sub-views
+│   │   └── components.ts
+│   ├── socket.ts        # WebSocket integration
+│   ├── boot.ts          # Initialization
+│   └── analyse.ts       # Entry point
+```
+
+### Controller Example
+
+From `ui/analyse/src/ctrl.ts`:
+
+```typescript
+import { TreeWrapper } from 'lib/tree';
+import { CevalCtrl } from 'lib/ceval';
+import { Socket } from './socket';
+
+export default class AnalyseCtrl {
+  data: AnalyseData;
+  tree: TreeWrapper;
+  ceval: CevalCtrl;
+  socket: Socket;
+  ground: ChessgroundApi;  // Chess board
+  
+  redraw: () => void;
+  
+  constructor(opts: AnalyseOpts, redraw: () => void) {
+    this.data = opts.data;
+    this.redraw = redraw;
+    this.tree = makeTree(opts.treeParts);
+    this.ceval = new CevalCtrl(opts.ceval, this);
+    this.socket = makeSocket(opts.socketSend, this);
+  }
+  
+  jump(path: Tree.Path): void {
+    this.tree.setPath(path);
+    this.updateBoard();
+    this.redraw();
+  }
+  
+  private updateBoard(): void {
+    const node = this.tree.getCurrentNode();
+    this.ground.set({
+      fen: node.fen,
+      lastMove: node.uci
+    });
+  }
+}
+```
+
+### Bootstrap Pattern
+
+Each page bootstraps its UI from server-provided data:
+
+```typescript
+// ui/analyse/src/boot.ts
+import { init as snabbdomInit } from 'snabbdom';
+import makeCtrl from './ctrl';
+import view from './view';
+
+export function boot(opts: AnalyseOpts) {
+  const patch = snabbdomInit([...snabbdomModules]);
+  
+  let vnode: VNode;
+  const redraw = () => {
+    vnode = patch(vnode, view(ctrl));
+  };
+  
+  const ctrl = makeCtrl(opts, redraw);
+  const element = document.querySelector('.analyse')!;
+  vnode = patch(element, view(ctrl));
+}
+
+// Server embeds bootstrap code:
+// <script>LichessAnalyse.boot({...data})</script>
+```
+
+## Shared Library (`ui/lib`)
+
+The `lib` package provides common utilities used across all UI packages:
+
+<Accordion title="Core Utilities">
+
+```typescript
+// ui/lib/src/index.ts exports:
+
+// Functional helpers
+export const prop = <T>(value: T): Prop<T> => {...};
+export const toggle = (initial: boolean): Toggle => {...};
+export const defined = <T>(v: T | undefined): v is T => v !== undefined;
+
+// Async utilities
+export const requestIdleCallback = (f: () => void) => {...};
+export const debounce = <F extends (...args: any[]) => void>(
+  func: F, wait: number
+) => {...};
+
+// View helpers
+export { h, type VNode } from 'snabbdom';
+export const onInsert = (f: (el: HTMLElement) => void) => {...};
+```
+
+</Accordion>
+
+<Accordion title="Game Utilities">
+
+```typescript
+// ui/lib/src/game/
+
+export const playable = (game: Game): boolean => 
+  game.status.id < 25 && !game.player.spectator;
+
+export const validUci = (fen: string, uci: Uci): boolean => {...};
+
+export const fenToEpd = (fen: string): string => {...};
+```
+
+</Accordion>
+
+<Accordion title="Chess Evaluation (ceval)">
+
+Client-side Stockfish integration:
+
+```typescript
+// ui/lib/src/ceval/
+export class CevalCtrl {
+  start(path: Tree.Path, nodes: Tree.Node[]): void {
+    this.worker.postMessage({
+      type: 'start',
+      fen: nodes[nodes.length - 1].fen,
+      moves: this.getMoves(nodes)
+    });
+  }
+}
+```
+
+</Accordion>
+
+## Chessground Integration
+
+[Chessground](https://github.com/lichess-org/chessground) is Lichess's custom-built chess board component:
+
+```typescript
+import { Chessground } from '@lichess-org/chessground';
+import type { Api as ChessgroundApi } from '@lichess-org/chessground/api';
+
+export function makeBoard(element: HTMLElement): ChessgroundApi {
+  return Chessground(element, {
+    fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR',
+    orientation: 'white',
+    movable: {
+      free: false,
+      color: 'white',
+      dests: new Map()  // Legal moves
+    },
+    events: {
+      move: (orig, dest) => handleMove(orig, dest)
+    }
+  });
+}
+```
+
+Chessground features:
+- SVG-based piece rendering
+- Touch and mouse input
+- Premoves and conditional moves
+- Animation and highlighting
+- Mobile-optimized
+
+## Build System
+
+The custom build system in `ui/.build/` uses **esbuild**:
+
+### Package Configuration
+
+Each package defines build configuration in `package.json`:
+
+```json
+{
+  "name": "analyse",
+  "build": {
+    "bundle": "src/**/analyse.*ts",
+    "sync": {
+      "node_modules/*stockfish*/*.{js,wasm}": "/public/npm"
+    },
+    "hash": ["/public/images/board/*.svg"]
+  }
+}
+```
+
+### Build Properties
+
+**bundle**: Entry points for esbuild
+- Matches `analyse.ts`, `analyse.study.ts`, etc.
+- Output: `/public/compiled/analyse.[hash].js`
+
+**sync**: Copy assets to public directory
+- Useful for large files (Stockfish WASM)
+- Watch mode syncs on changes
+
+**hash**: Content-hash assets for CDN caching
+- Creates symlinks in `/public/hashed/`
+- Manifest tracks hashes for server
+
+### Build Commands
+
+```bash
+ui/build              # Build all packages
+ui/build -w           # Watch mode
+ui/build analyse      # Build specific package
+ui/build --help       # Show options
+```
+
+### Code Splitting
+
+esbuild automatically splits shared code into chunks:
+
+```
+public/compiled/
+├── analyse.abc123.js        # Analyse entry point
+├── round.def456.js          # Round entry point
+└── lib.789xyz.js            # Shared lib chunk
+```
+
+Browsers cache shared chunks across pages.
+
+## TypeScript Configuration
+
+Base TypeScript config in `ui/tsconfig.base.json`:
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "paths": {
+      "lib/*": ["./lib/src/*"],
+      "bits/*": ["./bits/src/*"]
+    }
+  }
+}
+```
+
+Each package extends base config with package-specific settings.
+
+## State Management
+
+Lichess doesn't use Redux or similar state libraries. State is managed in controllers:
+
+### Local State Pattern
+
+```typescript
+export class PuzzleCtrl {
+  // Direct properties
+  mode: 'play' | 'view' = 'play';
+  streak: number = 0;
+  
+  // Reactive properties (Prop pattern)
+  loading = prop(false);
+  showSolution = toggle(false);
+  
+  // Methods modify state and trigger redraw
+  solve(): void {
+    this.mode = 'view';
+    this.streak++;
+    this.showSolution(true);
+    this.redraw();
+  }
+}
+```
+
+### Communication Between Components
+
+Components communicate via:
+
+1. **Direct calls**: Parent controller calls child methods
+2. **Callbacks**: Child triggers parent callback
+3. **PubSub**: `lib/pubsub` for global events
+
+```typescript
+import { pubsub } from 'lib/pubsub';
+
+// Publish event
+pubsub.emit('game.move', move);
+
+// Subscribe to event
+pubsub.on('game.move', (move) => handleMove(move));
+```
+
+## Performance Optimizations
+
+<Accordion title="Virtual DOM Efficiency">
+
+- **Keys**: Use keys for list items to enable efficient reordering
+- **Memoization**: Cache expensive view computations
+- **Lazy rendering**: Defer off-screen content
+
+```typescript
+// Keys for efficient list updates
+const moves = game.moves.map((move, i) => 
+  h('move', { key: move.id }, renderMove(move))
+);
+```
+
+</Accordion>
+
+<Accordion title="Asset Optimization">
+
+- **Code splitting**: Shared chunks cached across pages
+- **Tree shaking**: Dead code elimination
+- **Content hashing**: Immutable URLs for CDN caching
+- **Lazy loading**: Dynamic imports for large features
+
+</Accordion>
+
+<Accordion title="Browser Compatibility">
+
+Browserslist targets modern browsers:
+
+```json
+"browserslist": [
+  "Firefox >= 115",
+  "Chrome >= 112",
+  "Safari >= 13.1"
+]
+```
+
+No polyfills for older browsers - encourages upgrades for security.
+
+</Accordion>
+
+## Testing
+
+Unit tests use Node.js test runner:
+
+```bash
+ui/test                # Run all tests
+ui/test -w             # Watch mode
+ui/test winning        # Run specific test file
+```
+
+Test files in `ui/*/tests/**/*.test.ts`
+
+## See Also
+
+- [Backend Architecture](/architecture/backend) - Scala server architecture
+- [WebSocket Architecture](/architecture/websockets) - Real-time updates
+- [Deployment](/architecture/deployment) - Frontend asset delivery

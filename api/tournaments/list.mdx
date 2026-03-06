@@ -1,0 +1,251 @@
+---
+title: "List Current Tournaments"
+description: "Get all current tournaments including scheduled, started, and finished tournaments"
+---
+
+## Overview
+
+Retrieve information about all currently visible tournaments on Lichess. This endpoint returns scheduled tournaments, ongoing tournaments, and recently finished tournaments.
+
+## Endpoint
+
+<CodeGroup>
+```bash GET /api/tournament
+curl https://lichess.org/api/tournament
+```
+</CodeGroup>
+
+## Response Format
+
+Returns a JSON object with three arrays:
+
+<ResponseField name="created" type="array">
+  Array of scheduled tournaments that haven't started yet
+  
+  <Expandable title="Tournament Object">
+    <ResponseField name="id" type="string" required>
+      8-character tournament ID
+    </ResponseField>
+    
+    <ResponseField name="name" type="string" required>
+      Tournament name
+    </ResponseField>
+    
+    <ResponseField name="status" type="integer" required>
+      Tournament status: `10` (created), `20` (started), `30` (finished)
+    </ResponseField>
+    
+    <ResponseField name="createdBy" type="string" required>
+      User ID of tournament creator
+    </ResponseField>
+    
+    <ResponseField name="startsAt" type="integer" required>
+      Tournament start timestamp in milliseconds
+    </ResponseField>
+    
+    <ResponseField name="finishesAt" type="integer" required>
+      Tournament end timestamp in milliseconds
+    </ResponseField>
+    
+    <ResponseField name="nbPlayers" type="integer" required>
+      Number of players who joined
+    </ResponseField>
+    
+    <ResponseField name="variant" type="object" required>
+      Chess variant information
+      <Expandable title="Variant">
+        <ResponseField name="key" type="string">
+          Variant key (e.g., "standard", "chess960", "crazyhouse")
+        </ResponseField>
+        <ResponseField name="name" type="string">
+          Human-readable variant name
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    
+    <ResponseField name="clock" type="object" required>
+      Time control settings
+      <Expandable title="Clock">
+        <ResponseField name="limit" type="integer">
+          Initial time in seconds
+        </ResponseField>
+        <ResponseField name="increment" type="integer">
+          Increment per move in seconds
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    
+    <ResponseField name="minutes" type="integer" required>
+      Tournament duration in minutes
+    </ResponseField>
+    
+    <ResponseField name="rated" type="boolean">
+      Whether the tournament is rated
+    </ResponseField>
+    
+    <ResponseField name="perf" type="object">
+      Performance type information
+      <Expandable title="Performance Type">
+        <ResponseField name="key" type="string">
+          Performance type key (e.g., "bullet", "blitz", "rapid", "classical")
+        </ResponseField>
+        <ResponseField name="name" type="string">
+          Human-readable performance type name
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    
+    <ResponseField name="position" type="object">
+      Starting position (for thematic tournaments)
+      <Expandable title="Position">
+        <ResponseField name="fen" type="string">
+          FEN notation of starting position
+        </ResponseField>
+        <ResponseField name="name" type="string">
+          Opening name
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    
+    <ResponseField name="teamBattle" type="object">
+      Team battle information (if applicable)
+      <Expandable title="Team Battle">
+        <ResponseField name="teams" type="array">
+          Array of team IDs participating in the battle
+        </ResponseField>
+        <ResponseField name="nbLeaders" type="integer">
+          Number of leaders per team
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    
+    <ResponseField name="schedule" type="object">
+      Scheduling information for official tournaments
+      <Expandable title="Schedule">
+        <ResponseField name="freq" type="string">
+          Frequency: "hourly", "daily", "weekly", "monthly", "yearly", "shield", "marathon", "unique"
+        </ResponseField>
+        <ResponseField name="speed" type="string">
+          Speed category: "ultraBullet", "bullet", "blitz", "rapid", "classical"
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="started" type="array">
+  Array of tournaments currently in progress
+</ResponseField>
+
+<ResponseField name="finished" type="array">
+  Array of recently finished notable tournaments
+</ResponseField>
+
+## Example Response
+
+```json
+{
+  "created": [
+    {
+      "id": "QITRjufu",
+      "createdBy": "lichess",
+      "startsAt": 1709740800000,
+      "name": "Hourly Bullet Arena",
+      "clock": {
+        "limit": 60,
+        "increment": 0
+      },
+      "minutes": 30,
+      "status": 10,
+      "nbPlayers": 45,
+      "variant": {
+        "key": "standard",
+        "name": "Standard"
+      },
+      "rated": true,
+      "perf": {
+        "key": "bullet",
+        "name": "Bullet"
+      },
+      "finishesAt": 1709742600000,
+      "schedule": {
+        "freq": "hourly",
+        "speed": "bullet"
+      }
+    }
+  ],
+  "started": [
+    {
+      "id": "Xg7K4bTy",
+      "createdBy": "lichess",
+      "startsAt": 1709738400000,
+      "name": "Hourly Blitz Arena",
+      "clock": {
+        "limit": 180,
+        "increment": 0
+      },
+      "minutes": 45,
+      "status": 20,
+      "nbPlayers": 234,
+      "variant": {
+        "key": "standard",
+        "name": "Standard"
+      },
+      "rated": true,
+      "perf": {
+        "key": "blitz",
+        "name": "Blitz"
+      },
+      "finishesAt": 1709741100000
+    }
+  ],
+  "finished": [
+    {
+      "id": "Ab2Cd3Ef",
+      "createdBy": "lichess",
+      "startsAt": 1709732400000,
+      "name": "Daily Classical Arena",
+      "clock": {
+        "limit": 900,
+        "increment": 10
+      },
+      "minutes": 180,
+      "status": 30,
+      "nbPlayers": 567,
+      "variant": {
+        "key": "standard",
+        "name": "Standard"
+      },
+      "rated": true,
+      "perf": {
+        "key": "classical",
+        "name": "Classical"
+      },
+      "finishesAt": 1709743200000,
+      "winnerId": "some_user"
+    }
+  ]
+}
+```
+
+## Tournament Status Values
+
+- `10` - Created (scheduled, not started)
+- `20` - Started (in progress)
+- `30` - Finished
+
+## Rate Limits
+
+This endpoint is subject to standard rate limits. No authentication is required.
+
+## Related Endpoints
+
+- [Get Tournament Details](/api/tournaments/show) - Get full details of a specific tournament
+- [Create Tournament](/api/tournaments/create) - Create a new arena tournament
+- [Join Tournament](/api/tournaments/join) - Join an existing tournament
+
+## Source Code Reference
+
+Implementation can be found in:
+- `app/controllers/Api.scala:146` - `currentTournaments` method
+- `app/controllers/Tournament.scala:146` - Tournament API handling

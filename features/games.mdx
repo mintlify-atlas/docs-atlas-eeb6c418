@@ -1,0 +1,214 @@
+---
+title: 'Games'
+description: 'Play chess games in various formats, time controls, and variants on Lichess'
+---
+
+## Overview
+
+Lichess offers a comprehensive chess gaming experience with multiple ways to play. Whether you want to play casually with friends, challenge the computer, or compete in rated games, Lichess provides flexible options for every skill level.
+
+## Game Types
+
+<CardGroup cols={2}>
+  <Card title="Casual Games" icon="chess-board">
+    Play unrated games to practice without affecting your rating
+  </Card>
+  <Card title="Rated Games" icon="chart-line">
+    Compete in rated matches to improve your official Lichess rating
+  </Card>
+  <Card title="vs Computer" icon="robot">
+    Challenge Stockfish AI at 8 difficulty levels (1-8)
+  </Card>
+  <Card title="vs Friend" icon="user-group">
+    Create private games and invite specific players
+  </Card>
+</CardGroup>
+
+## Time Controls
+
+Lichess supports a wide range of time controls to match your playing style:
+
+### Speed Categories
+
+<Accordion title="UltraBullet">
+  Lightning-fast games under 30 seconds total. Requires quick reflexes and instant decision-making.
+  - **Example**: 15+0 (15 seconds, no increment)
+</Accordion>
+
+<Accordion title="Bullet">
+  Very fast games between 30 seconds and 3 minutes total.
+  - **Examples**: 1+0, 2+1
+  - Rated games require at least 20 completed rated bullet games to participate
+</Accordion>
+
+<Accordion title="Blitz">
+  Fast-paced games between 3 and 8 minutes.
+  - **Examples**: 3+0, 3+2, 5+0, 5+3
+  - Most popular time control on Lichess
+  - Rated games require at least 15 completed rated blitz games
+</Accordion>
+
+<Accordion title="Rapid">
+  Moderate pace games between 8 and 25 minutes.
+  - **Examples**: 10+0, 10+5, 15+10
+  - Allows for more calculation and planning
+  - Rated games require at least 10 completed rated rapid games
+</Accordion>
+
+<Accordion title="Classical">
+  Long, thoughtful games over 25 minutes.
+  - **Examples**: 30+0, 30+20
+  - Suitable for serious, in-depth play
+  - Rated games require at least 5 completed rated classical games
+</Accordion>
+
+<Accordion title="Correspondence">
+  Games played over days with time measured in days per move.
+  - Multiple days to make each move
+  - Perfect for analyzing positions deeply
+</Accordion>
+
+<Note>
+  The minimum rated games requirement ensures fair matchmaking and prevents rating manipulation.
+</Note>
+
+## Chess Variants
+
+Beyond standard chess, Lichess supports 10+ chess variants:
+
+- **Standard** - Classic FIDE chess rules
+- **Chess960** - Fischer Random with randomized starting positions
+- **Crazyhouse** - Captured pieces can be dropped back on the board
+- **King of the Hill** - Control the center to win
+- **Three-check** - Give check three times to win
+- **Antichess** - Lose all your pieces or get stalemated to win
+- **Atomic** - Captures trigger explosions
+- **Horde** - White has 36 pawns vs Black's normal army
+- **Racing Kings** - Race your king to the 8th rank
+- **From Position** - Start from custom positions
+
+## Game Features
+
+### During the Game
+
+<Steps>
+  <Step title="Move with Drag & Drop">
+    Drag pieces to make moves, or click-click for touch devices
+  </Step>
+  
+  <Step title="Clock Management">
+    Games automatically start the clock when both players have moved. Increment is added after each move.
+  </Step>
+  
+  <Step title="Premove & Predrop">
+    Queue your next move in advance to save time in fast games
+  </Step>
+  
+  <Step title="Chat & Emojis">
+    Communicate with your opponent (can be disabled in preferences)
+  </Step>
+</Steps>
+
+### Game Actions
+
+- **Offer Draw** - Propose a draw after move 2 (limited to prevent spam)
+- **Request Takeback** - Ask to undo the last move (casual games only)
+- **Resign** - Concede the game
+- **Abort** - Cancel the game if fewer than 2 moves played
+- **Berserk** - In arena tournaments, halve your clock for extra points
+
+<Note>
+  Draw offers cannot be repeated too frequently. There's a 20-ply cooldown between offers.
+</Note>
+
+### Blindfold Mode
+
+Enable blindfold mode to hide pieces and test your visualization skills. Available as a per-game option.
+
+## Game Analysis
+
+After each game, access powerful analysis tools:
+
+- **Computer Analysis** - Request Stockfish evaluation of your game
+- **Move Times** - Review time spent on each move
+- **Opening Explorer** - See opening statistics and master games
+- **Accuracy** - View your accuracy percentage based on engine evaluations
+- **Blur Detection** - System tracks suspicious tabbing behavior
+
+## Finding Games
+
+### Create Custom Game
+
+1. Click "Create a game" from the homepage
+2. Select time control and increment
+3. Choose rated/casual and variant
+4. Set color preference or play random
+5. Wait for an opponent or send invite link
+
+### Quick Pairing
+
+Use the lobby to find games instantly:
+- Select your preferred time control
+- System matches you with a similarly-rated opponent
+- Game starts automatically when matched
+
+### Play with Friend
+
+1. Click "Play with a friend"
+2. Configure game settings
+3. Share the generated URL
+4. Game starts when your friend joins
+
+## Game History & Export
+
+All your games are saved permanently:
+
+- Browse game history on your profile
+- Filter by result, variant, speed, or opponent
+- Export games in PGN format
+- Download individual games or bulk export
+- Import games to studies for deeper analysis
+
+<Note>
+  Games with fewer than 5 moves are not rated to prevent rating manipulation.
+</Note>
+
+## Compatibility
+
+### Board Support
+
+Certain time controls are compatible with DGT electronic boards:
+- Blitz or slower (3+0 and above)
+- Must be rated games against human opponents
+
+### Bot Support
+
+Bots can play in most time controls except ultra-fast games. API access is required for bot accounts.
+
+## Fair Play
+
+Lichess employs multiple systems to ensure fair gameplay:
+
+- **Blur tracking** - Detects when players tab away from the game
+- **Move time analysis** - Unusual patterns trigger review
+- **Hold alerts** - Long pauses between moves are flagged
+- **Engine detection** - Statistical analysis identifies computer assistance
+
+Games older than 21 days with no moves are automatically marked as abandoned.
+
+## Related Features
+
+<CardGroup cols={2}>
+  <Card title="Analysis" href="/features/analysis">
+    Deep dive into your games with computer analysis
+  </Card>
+  <Card title="Tournaments" href="/features/tournaments">
+    Compete in scheduled or custom tournaments
+  </Card>
+  <Card title="Studies" href="/features/studies">
+    Save and annotate your best games
+  </Card>
+  <Card title="Puzzles" href="/features/puzzles">
+    Improve tactics with puzzle training
+  </Card>
+</CardGroup>

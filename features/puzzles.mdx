@@ -1,0 +1,298 @@
+---
+title: 'Puzzles'
+description: 'Improve your chess tactics with Lichess puzzles - tactical problems from real games'
+---
+
+## Overview
+
+Lichess Puzzles is a comprehensive tactical training system featuring millions of chess puzzles generated from real games. Each puzzle represents a critical moment where one side can achieve a significant advantage or deliver checkmate.
+
+<Note>
+  All puzzles come from actual Lichess games, ensuring realistic tactical scenarios you'll encounter in your own play.
+</Note>
+
+## How Puzzles Work
+
+<Steps>
+  <Step title="Initial Position">
+    Each puzzle starts with an opponent's move already played. You need to find the best continuation.
+  </Step>
+  
+  <Step title="Find the Best Move">
+    Calculate the best move or sequence. You may need to find multiple moves in a row.
+  </Step>
+  
+  <Step title="Opponent Responds">
+    The puzzle automatically plays the opponent's best defensive moves.
+  </Step>
+  
+  <Step title="Complete the Solution">
+    Continue until you've completed the entire tactical sequence.
+  </Step>
+</Steps>
+
+## Puzzle Features
+
+### Puzzle Rating System
+
+Every puzzle has its own rating calculated using the Glicko-2 system:
+
+- Puzzles start with an estimated rating based on the game they came from
+- Rating adjusts based on player success/failure rates
+- Your puzzle rating is separate from your game rating
+- Solve harder puzzles to increase your puzzle rating faster
+
+### Your Puzzle Rating
+
+You have a personal puzzle rating that:
+- Starts around 1500 for new accounts
+- Increases when you solve puzzles (especially higher-rated ones)
+- Decreases when you fail puzzles
+- Helps match you with appropriately difficult puzzles
+
+<Note>
+  Puzzle ratings are deliberately separate from playing ratings since tactical ability and overall chess strength are different skills.
+</Note>
+
+## Puzzle Themes
+
+Lichess categorizes puzzles into 100+ tactical themes, allowing focused training:
+
+### Tactical Motifs
+
+<AccordionGroup>
+  <Accordion title="Mating Patterns">
+    - **Back Rank Mate** - Checkmate on the opponent's back rank
+    - **Smothered Mate** - Knight delivers mate to a king blocked by its own pieces
+    - **Anastasia's Mate** - Knight and rook coordinate for mate
+    - **Arabian Mate** - Knight and rook deliver mate in the corner
+    - **Opera Mate** - Rook and bishop deliver mate along diagonal
+    - **Mate in 1, 2, 3, 4, 5** - Forced checkmates in N moves
+  </Accordion>
+  
+  <Accordion title="Tactical Devices">
+    - **Fork** - One piece attacks multiple targets
+    - **Pin** - Piece cannot move without exposing a more valuable piece
+    - **Skewer** - Reverse pin forcing a valuable piece to move
+    - **Discovered Attack** - Moving one piece reveals attack from another
+    - **Deflection** - Force a piece away from defending something
+    - **Attraction** - Force a piece to a bad square
+    - **Clearance** - Clear a square or line for another piece
+  </Accordion>
+  
+  <Accordion title="Advanced Tactics">
+    - **Sacrifice** - Give up material for positional/tactical advantage
+    - **Zwischenzug (Intermezzo)** - In-between move that changes evaluation
+    - **Interference** - Block a line between two opponent pieces
+    - **Quiet Move** - Strong move without checks or captures
+    - **Defensive Move** - Find the only defense
+  </Accordion>
+  
+  <Accordion title="Game Phase">
+    - **Opening** - Tactics in the opening phase
+    - **Middlegame** - Most common puzzle category
+    - **Endgame** - Endgame tactics and technique
+    - **Rook Endgame, Queen Endgame**, etc. - Specific endgame types
+  </Accordion>
+  
+  <Accordion title="Material Outcome">
+    - **Advantage** - Gain a significant advantage
+    - **Crushing** - Achieve an overwhelming position
+    - **Equality** - Find the equalizing move
+    - **Promotion** - Advance a pawn to promotion
+  </Accordion>
+</AccordionGroup>
+
+### Special Categories
+
+- **Master** - Puzzles from master-level games (2300+ rating)
+- **Master vs Master** - Both players were masters
+- **Super GM** - From games between elite grandmasters
+- **Long** - Complex puzzles requiring multiple moves
+- **Short** - Quick tactical strikes (1-2 moves)
+- **One Move** - Single-move puzzles
+
+## Puzzle Modes
+
+### Puzzle Dashboard
+
+Access your personalized puzzle dashboard to:
+- View your puzzle rating and performance history
+- See your accuracy by theme
+- Track puzzles solved per theme
+- Identify your tactical strengths and weaknesses
+- Choose specific themes for targeted practice
+
+### Puzzle Streak
+
+How many puzzles can you solve in a row?
+- Solve consecutive puzzles without mistakes
+- Builds from easier to harder puzzles
+- Global leaderboard tracks the longest streaks
+- Different from rated puzzles - purely for fun and challenge
+
+### Puzzle Storm
+
+Speed-solving mode:
+- Solve as many puzzles as possible in 3 minutes
+- Start with easy puzzles, difficulty increases
+- Score based on number solved
+- Leaderboards for daily, weekly, and all-time
+
+### Puzzle Racer
+
+Race against opponents:
+- Competitive puzzle solving
+- First to complete 20 puzzles wins
+- Real-time racing against other players
+- Requires both speed and accuracy
+
+## Opening-Based Puzzles
+
+Train tactics in specific openings:
+
+- Filter puzzles by opening family or specific variation
+- Examples: Sicilian Defense, Italian Game, Queen's Gambit
+- Helps you learn typical tactics in your opening repertoire
+- Combines opening knowledge with tactical awareness
+
+<Note>
+  Opening-based training is especially useful for understanding typical tactical patterns in positions you regularly reach.
+</Note>
+
+## Daily Puzzle
+
+Featured on the homepage:
+- New puzzle every day at midnight UTC
+- Usually a particularly elegant or instructive position
+- Viewable by everyone (logged in or not)
+- Great for casual daily practice
+
+## Puzzle Sessions
+
+### Standard Training
+
+Default puzzle experience:
+- Puzzles matched to your rating
+- Rating adjusts based on performance
+- Immediate feedback on each move
+- Can retry failed puzzles
+- Complete solution shown after solving or giving up
+
+### Angle Training
+
+Choose your focus:
+
+<CardGroup cols={2}>
+  <Card title="By Theme" icon="chess-knight">
+    Select from 100+ tactical themes
+  </Card>
+  <Card title="By Opening" icon="book-open">
+    Practice tactics from specific openings
+  </Card>
+  <Card title="By Difficulty" icon="signal">
+    Choose easier or harder than your current rating
+  </Card>
+  <Card title="Mix" icon="shuffle">
+    Random puzzles at your level
+  </Card>
+</CardGroup>
+
+## Puzzle Interface
+
+### Controls
+
+- **Move the pieces** - Drag and drop or click-click to submit moves
+- **Hint** - Get a subtle hint without seeing the full solution
+- **Give Up** - Reveal the solution (counts as a failed attempt)
+- **Continue** - After solving, move to the next puzzle
+- **Retry** - Attempt the puzzle again from the start
+
+### Feedback
+
+- **Correct move** - Green checkmark, puzzle continues
+- **Wrong move** - Red X, can retry or see solution
+- **Alternative move** - "Good but not best" for valid alternatives
+- **Puzzle complete** - Rating change displayed
+
+### Information Displayed
+
+- Puzzle rating and your rating
+- Number of plays this puzzle has received
+- Themes associated with the puzzle
+- Source game (link to the original game)
+- Vote buttons to rate puzzle quality
+
+## Puzzle History
+
+Review your past puzzle attempts:
+- Browse all solved and attempted puzzles
+- Filter by outcome (solved/failed)
+- Re-attempt puzzles you previously failed
+- Track your improvement over time
+- Export puzzle data for analysis
+
+## Puzzle Quality
+
+### Voting System
+
+Help improve puzzle quality:
+- Vote thumbs up for good puzzles
+- Vote thumbs down for unclear or incorrect puzzles
+- Community voting helps filter high-quality puzzles
+- Poorly-rated puzzles appear less frequently
+
+### Puzzle Generation
+
+Puzzles are automatically generated:
+1. Server analyzes completed games with Stockfish
+2. Identifies positions where one move is significantly better
+3. Verifies the solution is forced or clearly best
+4. Tags puzzles with appropriate themes
+5. Assigns initial rating based on game strength and difficulty
+
+<Note>
+  New puzzles are constantly added as games are played and analyzed on Lichess.
+</Note>
+
+## Anonymous Puzzle Play
+
+Even without an account:
+- Solve unlimited puzzles
+- No rating tracking (puzzles are randomly selected)
+- Progress not saved between sessions
+- Create an account to track improvement
+
+## Puzzle Tips
+
+<CardGroup cols={2}>
+  <Card title="Look for Checks" icon="chess-king">
+    Start by examining all forcing moves: checks, captures, and threats
+  </Card>
+  <Card title="Calculate Fully" icon="brain">
+    Work out the full sequence before moving
+  </Card>
+  <Card title="Consider Defense" icon="shield">
+    Think about the opponent's best defensive tries
+  </Card>
+  <Card title="Train Weak Themes" icon="chart-mixed">
+    Focus on themes where your accuracy is lowest
+  </Card>
+</CardGroup>
+
+## Related Features
+
+<CardGroup cols={2}>
+  <Card title="Analysis" href="/features/analysis">
+    Analyze games with Stockfish to find tactical mistakes
+  </Card>
+  <Card title="Studies" href="/features/studies">
+    Create tactical exercises in studies
+  </Card>
+  <Card title="Games" href="/features/games">
+    Apply tactical skills in real games
+  </Card>
+  <Card title="Tournaments" href="/features/tournaments">
+    Test your tactics under time pressure
+  </Card>
+</CardGroup>

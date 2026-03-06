@@ -1,0 +1,265 @@
+---
+title: "Join Arena Tournament"
+description: "Join an existing arena tournament"
+---
+
+## Overview
+
+Join an arena tournament. Players can join at any time during the tournament, though it's recommended to join before it starts for maximum participation.
+
+<Note>
+  Requires authentication with OAuth token that has `tournament:write`, `bot:play`, or `web:mobile` scope.
+</Note>
+
+## Endpoint
+
+<CodeGroup>
+```bash POST /api/tournament/{tournamentId}/join
+curl -X POST https://lichess.org/api/tournament/{tournamentId}/join \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{"password": "secret", "team": "team-id"}'
+```
+</CodeGroup>
+
+## Authentication
+
+Requires OAuth token with one of:
+- `tournament:write` scope
+- `bot:play` scope (for bot accounts)
+- `web:mobile` scope (for mobile clients)
+
+```bash
+Authorization: Bearer lip_xxxxxxxxxxxx
+```
+
+## Path Parameters
+
+<ParamField path="tournamentId" type="string" required>
+  8-character tournament ID
+</ParamField>
+
+## Request Body
+
+<ParamField body="password" type="string">
+  Password for private tournaments. Required if the tournament has password protection
+</ParamField>
+
+<ParamField body="team" type="string">
+  Team ID to join with (required for team battle tournaments). You must be a member of the team
+</ParamField>
+
+<ParamField body="pairMeAsap" type="boolean">
+  If `true`, request immediate pairing. Only works if tournament has already started
+</ParamField>
+
+## Response
+
+Returns a JSON object indicating success or failure:
+
+<ResponseField name="ok" type="boolean">
+  `true` if successfully joined, `false` if failed
+</ResponseField>
+
+<ResponseField name="joined" type="boolean">
+  `true` if successfully joined (deprecated, use `ok` instead)
+</ResponseField>
+
+<ResponseField name="error" type="string">
+  Error message if join failed
+</ResponseField>
+
+## Example Response
+
+<ResponseExample>
+```json Success
+{
+  "ok": true
+}
+```
+
+```json Already Joined
+{
+  "ok": true
+}
+```
+
+```json Wrong Password
+{
+  "joined": false,
+  "error": "Wrong entry code"
+}
+```
+
+```json Missing Team
+{
+  "joined": false,
+  "error": "Missing team"
+}
+```
+</ResponseExample>
+
+## Join Result Codes
+
+Possible error messages:
+
+<ResponseField name="Wrong entry code">
+  Incorrect password provided for private tournament
+</ResponseField>
+
+<ResponseField name="Your pause is not over yet">
+  You have a temporary ban from joining tournaments
+</ResponseField>
+
+<ResponseField name="Tournament restrictions">
+  You don't meet the tournament entry conditions (rating, account age, etc.)
+</ResponseField>
+
+<ResponseField name="Missing team">
+  Team battle tournament requires a team selection, or you're not a member of the specified team
+</ResponseField>
+
+<ResponseField name="You are not allowed to join arenas">
+  Your account has an arena ban
+</ResponseField>
+
+<ResponseField name="You are not allowed to play in prized tournaments">
+  Your account has a prize ban and the tournament description mentions prizes
+</ResponseField>
+
+<ResponseField name="You are joining too many tournaments">
+  Rate limit exceeded for tournament joins
+</ResponseField>
+
+<ResponseField name="This tournament no longer exists">
+  Tournament ID is invalid or tournament was deleted
+</ResponseField>
+
+## Entry Conditions
+
+Tournaments may have various entry conditions:
+
+### Rating Requirements
+- Minimum rating in the tournament's performance type
+- Maximum rating in the tournament's performance type
+
+### Account Requirements
+- Minimum number of rated games in the performance type
+- Minimum account age
+
+### Team Requirements
+- Team membership for team-restricted tournaments
+- Team selection for team battle tournaments
+
+### Other Restrictions
+- Password protection
+- Allow-list (only specific users can join)
+- No arena-banned or prize-banned accounts
+
+## User-Specific Access Codes
+
+<Info>
+  Tournament passwords can be user-specific. If a tournament uses HMAC-based access codes, each user has a unique password calculated as:
+  
+  ```
+  HMAC-SHA256(tournament_password, user_id)
+  ```
+  
+  This allows tournament organizers to distribute individual codes to participants.
+</Info>
+
+## Rate Limits
+
+<Warning>
+  Joining tournaments is rate-limited:
+  - 8 joins per hour for first-time joins
+  - 30 joins per day for first-time joins
+  - Lower cost for:
+    - Team leaders joining their team's tournaments
+    - Re-joining tournaments already joined
+    - Official Lichess tournaments
+</Warning>
+
+## Timing Considerations
+
+### Joining Before Start
+- You can join any time before the tournament starts
+- You'll be paired in the first round when the tournament starts
+
+### Joining After Start
+- You can still join after the tournament starts
+- You'll be paired as soon as possible
+- Your score starts at 0 regardless of current round
+- Use `pairMeAsap: true` to request immediate pairing
+
+### Joining Late
+- You can join up until pairings are closed (typically last 30-120 seconds of tournament)
+- Late joiners have fewer opportunities to play games
+
+## Team Battle Specifics
+
+<Tip>
+  For team battle tournaments:
+  1. You must be a member of one of the participating teams
+  2. You must specify which team to join with via the `team` parameter
+  3. Once the tournament starts, you cannot change teams
+  4. Your score contributes to your team's total score
+</Tip>
+
+## Withdrawing
+
+To withdraw from a tournament, use the [Withdraw endpoint](/api/tournaments/withdraw):
+
+```bash
+POST /api/tournament/{tournamentId}/withdraw
+```
+
+## Example Usage
+
+### Join a Public Tournament
+
+```bash
+curl -X POST https://lichess.org/api/tournament/QITRjufu/join \
+  -H "Authorization: Bearer lip_xxxxxxxxxxxx"
+```
+
+### Join a Private Tournament
+
+```bash
+curl -X POST https://lichess.org/api/tournament/QITRjufu/join \
+  -H "Authorization: Bearer lip_xxxxxxxxxxxx" \
+  -H "Content-Type: application/json" \
+  -d '{"password": "my-secret-password"}'
+```
+
+### Join a Team Battle
+
+```bash
+curl -X POST https://lichess.org/api/tournament/QITRjufu/join \
+  -H "Authorization: Bearer lip_xxxxxxxxxxxx" \
+  -H "Content-Type: application/json" \
+  -d '{"team": "my-team-id"}'
+```
+
+### Join and Request Immediate Pairing
+
+```bash
+curl -X POST https://lichess.org/api/tournament/QITRjufu/join \
+  -H "Authorization: Bearer lip_xxxxxxxxxxxx" \
+  -H "Content-Type: application/json" \
+  -d '{"pairMeAsap": true}'
+```
+
+## Related Endpoints
+
+- [List Tournaments](/api/tournaments/list) - Get all current tournaments
+- [Get Tournament Details](/api/tournaments/show) - Get full tournament information
+- [Withdraw from Tournament](/api/tournaments/withdraw) - Leave a tournament
+- [Create Tournament](/api/tournaments/create) - Create a new tournament
+
+## Source Code Reference
+
+Implementation can be found in:
+- `app/controllers/Tournament.scala:176-194` - `join` and `apiJoin` methods
+- `modules/tournament/src/main/TournamentApi.scala:285-344` - `join` method
+- `modules/tournament/src/main/TournamentForm.scala:139-154` - Join form validation

@@ -1,0 +1,231 @@
+---
+title: Manage Chapters
+description: Delete chapters and update chapter metadata
+---
+
+## Delete a chapter
+
+<Info>
+Requires OAuth scope: `study:write`
+</Info>
+
+```http
+DELETE https://lichess.org/api/study/{studyId}/{chapterId}
+```
+
+Delete a chapter from a study.
+
+<Warning>
+You must be the study owner or have study admin permissions.
+
+If you delete the only chapter in a study, a new empty chapter will be automatically created.
+</Warning>
+
+### Path Parameters
+
+<ParamField path="studyId" type="string" required>
+  The study ID (8 characters)
+</ParamField>
+
+<ParamField path="chapterId" type="string" required>
+  The chapter ID to delete (8 characters)
+</ParamField>
+
+### Response
+
+Returns HTTP 204 No Content on success.
+
+### Example
+
+```bash
+curl -X DELETE "https://lichess.org/api/study/XtFCFYlM/kYKDRmpd" \
+  -H "Authorization: Bearer {token}"
+```
+
+### Error responses
+
+<ResponseExample>
+```json 401 Unauthorized
+{
+  "error": "Missing or invalid API token"
+}
+```
+
+```json 403 Forbidden
+{
+  "error": "You must be the study owner or admin"
+}
+```
+
+```json 404 Not Found
+{
+  "error": "Study or chapter not found"
+}
+```
+</ResponseExample>
+
+---
+
+## Update chapter PGN tags
+
+<Info>
+Requires OAuth scope: `study:write`
+</Info>
+
+```http
+POST https://lichess.org/api/study/{studyId}/{chapterId}/tags
+```
+
+Update the PGN tags (metadata) of a study chapter.
+
+<Note>
+- You must be a contributor to the study.
+- Existing tags not mentioned in the request are preserved.
+- To delete a tag, send it with an empty value.
+- Only standard PGN tags and some custom tags are allowed.
+</Note>
+
+### Path Parameters
+
+<ParamField path="studyId" type="string" required>
+  The study ID (8 characters)
+</ParamField>
+
+<ParamField path="chapterId" type="string" required>
+  The chapter ID (8 characters)
+</ParamField>
+
+### Request Body
+
+Send as `application/x-www-form-urlencoded`:
+
+<ParamField body="pgn" type="string" required>
+  PGN tags to update, in standard PGN tag format.
+  
+  Format: `[TagName "Tag Value"]`
+  
+  Multiple tags should be separated by newlines.
+</ParamField>
+
+### Supported PGN Tags
+
+Standard tags:
+- `Event` - Event name
+- `Site` - Site/location
+- `Date` - Date in YYYY.MM.DD format
+- `Round` - Round number
+- `White` - White player name
+- `Black` - Black player name  
+- `Result` - Game result (`1-0`, `0-1`, `1/2-1/2`, or `*`)
+- `Annotator` - Annotator name
+- `ECO` - Opening ECO code
+- `Opening` - Opening name
+- `Variant` - Chess variant
+- `TimeControl` - Time control
+- `WhiteElo` - White player rating
+- `BlackElo` - Black player rating
+- `WhiteTitle` - White player title (GM, IM, etc.)
+- `BlackTitle` - Black player title
+- `FEN` - Starting position (for non-standard starts)
+
+### Response
+
+Returns HTTP 204 No Content on success.
+
+### Example
+
+Update multiple tags:
+
+```bash
+curl -X POST "https://lichess.org/api/study/XtFCFYlM/kYKDRmpd/tags" \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d 'pgn=[Event "World Championship"]
+[Site "London"]
+[Date "2023.04.15"]
+[White "Carlsen, Magnus"]
+[Black "Nepomniachtchi, Ian"]
+[WhiteElo "2853"]
+[BlackElo "2795"]
+[ECO "C42"]
+[Opening "Russian Game"]'
+```
+
+Delete a tag by setting it to empty:
+
+```bash
+curl -X POST "https://lichess.org/api/study/XtFCFYlM/kYKDRmpd/tags" \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d 'pgn=[Annotator ""]'
+```
+
+### Error responses
+
+<ResponseExample>
+```json 400 Bad Request
+{
+  "error": "Invalid PGN tag format"
+}
+```
+
+```json 401 Unauthorized
+{
+  "error": "Missing or invalid API token"
+}
+```
+
+```json 403 Forbidden
+{
+  "error": "You are not a contributor to this study"
+}
+```
+
+```json 404 Not Found
+{
+  "error": "Study or chapter not found"
+}
+```
+</ResponseExample>
+
+---
+
+## Additional Information
+
+### Chapter IDs
+
+Chapter IDs are 8-character alphanumeric strings that uniquely identify a chapter within Lichess. You can find chapter IDs in:
+
+- The URL when viewing a chapter: `lichess.org/study/{studyId}/{chapterId}`
+- The response from the [Import PGN endpoint](/api/studies/import)
+- The chapter list when viewing a study in the Lichess interface
+
+### Rate Limits
+
+All chapter management endpoints are rate limited. The exact limits depend on:
+
+- Your account status (titled players and coaches have higher limits)
+- Your IP address
+- The specific operation being performed
+
+If you exceed the rate limit, you'll receive a `429 Too Many Requests` response.
+
+### Permissions
+
+<CardGroup cols={2}>
+  <Card title="Study Owner" icon="crown">
+    Full access to all chapter operations including deletion and tag updates.
+  </Card>
+  
+  <Card title="Contributors" icon="users">
+    Can update chapter tags and import PGN, but cannot delete chapters unless they are the study owner.
+  </Card>
+  
+  <Card title="Study Admin" icon="shield">
+    Special permission that grants owner-level access. Requires the `study:admin` permission.
+  </Card>
+  
+  <Card title="Read-only" icon="eye">
+    Can only view and export chapters. Cannot make any modifications.
+  </Card>
+</CardGroup>

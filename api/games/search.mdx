@@ -1,0 +1,295 @@
+---
+title: Search Games
+description: Search through Lichess games with advanced filters
+---
+
+## Search games
+
+Search games using various filters. This endpoint provides a web interface and API access to search through all Lichess games.
+
+<Note>
+  Game search requires authentication. Anonymous users cannot search games.
+</Note>
+
+<CodeGroup>
+```bash GET /games/search
+curl "https://lichess.org/games/search?page=1"
+```
+
+```bash With search parameters
+curl "https://lichess.org/games/search?page=1" \
+  -X POST \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "players.a=player1&players.b=player2&ratingMin=1800&ratingMax=2200"
+```
+</CodeGroup>
+
+### Query Parameters
+
+<ParamField query="page" type="integer" default="1">
+  Page number for pagination
+</ParamField>
+
+### Search Form Parameters
+
+These parameters are typically submitted via POST in the request body:
+
+#### Players
+
+<ParamField body="players.a" type="string">
+  Player A username (white or black)
+</ParamField>
+
+<ParamField body="players.b" type="string">
+  Player B username (white or black)
+</ParamField>
+
+<ParamField body="players.white" type="string">
+  White player username
+</ParamField>
+
+<ParamField body="players.black" type="string">
+  Black player username
+</ParamField>
+
+<ParamField body="players.winner" type="string">
+  Filter by winner. Possible values: `white`, `black`, `none` (draws)
+</ParamField>
+
+#### Rating
+
+<ParamField body="ratingMin" type="integer">
+  Minimum average rating (400-2900)
+</ParamField>
+
+<ParamField body="ratingMax" type="integer">
+  Maximum average rating (400-2900)
+</ParamField>
+
+#### Game Type
+
+<ParamField body="perf" type="array">
+  Game type(s). Multiple values can be selected.
+  
+  Possible values:
+  - `ultraBullet` - UltraBullet
+  - `bullet` - Bullet
+  - `blitz` - Blitz
+  - `rapid` - Rapid
+  - `classical` - Classical
+  - `correspondence` - Correspondence
+  - `chess960` - Chess960
+  - `crazyhouse` - Crazyhouse
+  - `antichess` - Antichess
+  - `atomic` - Atomic
+  - `horde` - Horde
+  - `kingOfTheHill` - King of the Hill
+  - `racingKings` - Racing Kings
+  - `threeCheck` - Three-check
+</ParamField>
+
+#### Game Status
+
+<ParamField body="status" type="string">
+  Filter by game result/status
+  
+  Possible values:
+  - `mate` - Checkmate
+  - `resign` - Resignation
+  - `stalemate` - Stalemate
+  - `timeout` - Time out
+  - `draw` - Draw
+  - `outoftime` - Out of time
+  - `cheat` - Cheat detected
+</ParamField>
+
+#### Date Range
+
+<ParamField body="date.min" type="string">
+  Minimum date in ISO 8601 format (e.g., `2024-01-01`)
+</ParamField>
+
+<ParamField body="date.max" type="string">
+  Maximum date in ISO 8601 format (e.g., `2024-12-31`)
+</ParamField>
+
+#### Time Control
+
+<ParamField body="turnsMin" type="integer">
+  Minimum number of turns (half-moves)
+</ParamField>
+
+<ParamField body="turnsMax" type="integer">
+  Maximum number of turns (half-moves)
+</ParamField>
+
+<ParamField body="durationMin" type="integer">
+  Minimum game duration in seconds
+</ParamField>
+
+<ParamField body="durationMax" type="integer">
+  Maximum game duration in seconds
+</ParamField>
+
+<ParamField body="clockInit" type="integer">
+  Clock initial time in seconds
+</ParamField>
+
+<ParamField body="clockInc" type="integer">
+  Clock increment in seconds
+</ParamField>
+
+#### Additional Filters
+
+<ParamField body="rated" type="string">
+  Filter by rated status. Possible values: `true`, `false`
+</ParamField>
+
+<ParamField body="analysed" type="string">
+  Filter games with computer analysis. Possible values: `true`, `false`
+</ParamField>
+
+<ParamField body="opening" type="string">
+  Filter by opening ECO code or name (e.g., `C50`, `Italian Game`)
+</ParamField>
+
+<ParamField body="source" type="string">
+  Filter by game source
+  
+  Possible values:
+  - `lobby` - Lobby
+  - `friend` - Friend
+  - `ai` - Computer
+  - `api` - API
+  - `tournament` - Tournament
+  - `pool` - Pool
+  - `swiss` - Swiss
+  - `simul` - Simultaneous exhibition
+</ParamField>
+
+<ParamField body="sort" type="object">
+  Sort options
+  
+  <ParamField body="sort.field" type="string">
+    Field to sort by. Possible values: `date`, `turns`, `rating`
+  </ParamField>
+  
+  <ParamField body="sort.order" type="string">
+    Sort order. Possible values: `asc`, `desc`
+  </ParamField>
+</ParamField>
+
+### Response
+
+For web requests, returns an HTML page with search results.
+
+For API requests (with appropriate Accept headers), returns a JSON paginator object:
+
+<ResponseExample>
+```json Search Results
+{
+  "currentPage": 1,
+  "maxPerPage": 15,
+  "currentPageResults": [
+    {
+      "id": "q7ZvsdUF",
+      "rated": true,
+      "variant": "standard",
+      "speed": "blitz",
+      "perf": "blitz",
+      "createdAt": 1709736600000,
+      "lastMoveAt": 1709736780000,
+      "status": "mate",
+      "source": "lobby",
+      "players": {
+        "white": {
+          "user": {
+            "name": "player1",
+            "id": "player1"
+          },
+          "rating": 2000,
+          "ratingDiff": 10
+        },
+        "black": {
+          "user": {
+            "name": "player2",
+            "id": "player2"
+          },
+          "rating": 1980,
+          "ratingDiff": -10
+        }
+      },
+      "winner": "white",
+      "opening": {
+        "eco": "C50",
+        "name": "Italian Game",
+        "ply": 5
+      },
+      "moves": "e4 e5 Nf3 Nc6 Bc4",
+      "url": "https://lichess.org/q7ZvsdUF"
+    }
+  ],
+  "nbResults": 142,
+  "previousPage": null,
+  "nextPage": 2,
+  "nbPages": 10
+}
+```
+</ResponseExample>
+
+## Search limitations
+
+<Warning>
+  Game search is rate-limited to prevent abuse:
+  
+  - Anonymous users cannot search
+  - Authenticated users have a concurrency limit (one search at a time per IP)
+  - Search cost increases with page number
+  - Maximum 100 pages per search
+</Warning>
+
+## Example searches
+
+### Find games between two players
+
+```bash
+curl "https://lichess.org/games/search?page=1" \
+  -X POST \
+  -H "Cookie: lila2=your_session_cookie" \
+  -d "players.a=Magnus&players.b=Hikaru"
+```
+
+### Find high-rated blitz games
+
+```bash
+curl "https://lichess.org/games/search?page=1" \
+  -X POST \
+  -H "Cookie: lila2=your_session_cookie" \
+  -d "ratingMin=2500&perf=blitz&analysed=true"
+```
+
+### Find games with specific opening
+
+```bash
+curl "https://lichess.org/games/search?page=1" \
+  -X POST \
+  -H "Cookie: lila2=your_session_cookie" \
+  -d "opening=Sicilian Defense&ratingMin=2000"
+```
+
+### Find games from a date range
+
+```bash
+curl "https://lichess.org/games/search?page=1" \
+  -X POST \
+  -H "Cookie: lila2=your_session_cookie" \
+  -d "date.min=2024-01-01&date.max=2024-01-31&perf=classical"
+```
+
+## Notes
+
+- Game search uses Elasticsearch for indexing and searching
+- Results are sorted by relevance by default
+- The search index may have a slight delay (typically under 1 minute) for newly finished games
+- Some filters require games to be analyzed (e.g., accuracy, complex position queries)
+- Tournament and Swiss games can be filtered by tournament/swiss ID in the game metadata

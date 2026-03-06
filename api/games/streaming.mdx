@@ -1,0 +1,234 @@
+---
+title: Stream Games
+description: Real-time game streams via Server-Sent Events
+---
+
+## Stream current game moves
+
+Stream positions and moves of a game in real-time, using Server-Sent Events.
+
+<CodeGroup>
+```bash GET /api/stream/game/{gameId}
+curl "https://lichess.org/api/stream/game/q7ZvsdUF"
+```
+</CodeGroup>
+
+### Path Parameters
+
+<ParamField path="gameId" type="string" required>
+  The game ID (8 characters)
+</ParamField>
+
+### Response
+
+Returns a Server-Sent Event stream. Each event is a JSON object representing the game state.
+
+<ResponseExample>
+```json Game State Events
+{"type":"gameFull","id":"q7ZvsdUF","variant":{"key":"standard","name":"Standard"},"speed":"blitz","perf":"blitz","rated":true,"initialFen":"startpos","fen":"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1","player":"white","turns":0,"startedAtTurn":0,"source":"lobby","status":{"id":20,"name":"started"},"createdAt":1709736600000,"white":{"id":"player1","name":"player1","rating":2000},"black":{"id":"player2","name":"player2","rating":1980},"clock":{"initial":180,"increment":0}}
+{"type":"gameState","moves":"e2e4","wtime":180000,"btime":180000,"winc":0,"binc":0,"status":"started"}
+{"type":"gameState","moves":"e2e4 e7e5","wtime":178000,"btime":177000,"winc":0,"binc":0,"status":"started"}
+```
+</ResponseExample>
+
+### Event Types
+
+<ResponseField name="gameFull" type="object">
+  Full game data sent at the beginning of the stream
+  
+  <ResponseField name="id" type="string">
+    Game ID
+  </ResponseField>
+  
+  <ResponseField name="variant" type="object">
+    Chess variant information
+  </ResponseField>
+  
+  <ResponseField name="speed" type="string">
+    Game speed (ultraBullet, bullet, blitz, rapid, classical, correspondence)
+  </ResponseField>
+  
+  <ResponseField name="rated" type="boolean">
+    Whether the game is rated
+  </ResponseField>
+  
+  <ResponseField name="clock" type="object">
+    Clock configuration with `initial` (seconds) and `increment` (seconds)
+  </ResponseField>
+  
+  <ResponseField name="white" type="object">
+    White player information with `id`, `name`, and `rating`
+  </ResponseField>
+  
+  <ResponseField name="black" type="object">
+    Black player information with `id`, `name`, and `rating`
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="gameState" type="object">
+  Game state update sent after each move
+  
+  <ResponseField name="moves" type="string">
+    Current moves in UCI format, space separated
+  </ResponseField>
+  
+  <ResponseField name="wtime" type="integer">
+    White's remaining time in milliseconds
+  </ResponseField>
+  
+  <ResponseField name="btime" type="integer">
+    Black's remaining time in milliseconds
+  </ResponseField>
+  
+  <ResponseField name="status" type="string">
+    Game status (started, mate, resign, stalemate, timeout, draw, outoftime, cheat, noStart, unknownFinish, variantEnd)
+  </ResponseField>
+  
+  <ResponseField name="winner" type="string">
+    Winner color (white or black) when game is finished
+  </ResponseField>
+</ResponseField>
+
+## Stream games by users
+
+Stream games played between specific users in real-time.
+
+<CodeGroup>
+```bash POST /api/stream/games-by-users
+curl -X POST "https://lichess.org/api/stream/games-by-users" \
+  -H "Content-Type: text/plain" \
+  -d "player1,player2,player3"
+```
+</CodeGroup>
+
+### Request Body
+
+<ParamField body="usernames" type="string" required>
+  Usernames separated by commas. The stream will emit games played between any of these users.
+</ParamField>
+
+### Query Parameters
+
+<ParamField query="withCurrentGames" type="boolean" default="false">
+  Include games that are already in progress at the time of starting the stream
+</ParamField>
+
+### Response
+
+Returns an ND-JSON stream where each line is a JSON game object. Games are emitted when they are created and when they finish.
+
+<ResponseExample>
+```json ND-JSON Stream
+{"id":"q7ZvsdUF","rated":true,"variant":"standard","speed":"blitz","perf":"blitz","createdAt":1709736600000,"status":"started","players":{"white":{"user":{"name":"player1","id":"player1"},"rating":2000},"black":{"user":{"name":"player2","id":"player2"},"rating":1980}}}
+{"id":"q7ZvsdUF","rated":true,"variant":"standard","speed":"blitz","perf":"blitz","createdAt":1709736600000,"lastMoveAt":1709736780000,"status":"mate","players":{"white":{"user":{"name":"player1","id":"player1"},"rating":2000,"ratingDiff":10},"black":{"user":{"name":"player2","id":"player2"},"rating":1980,"ratingDiff":-10}},"winner":"white","moves":"e4 e5 Nf3 Nc6 Bc4"}
+```
+</ResponseExample>
+
+## Stream games by IDs
+
+Stream multiple games by their IDs with the ability to add more games dynamically.
+
+<CodeGroup>
+```bash POST /api/stream/games/{streamId}
+curl -X POST "https://lichess.org/api/stream/games/mystream123" \
+  -H "Content-Type: text/plain" \
+  -d "q7ZvsdUF,iAnNeY0A"
+```
+
+```bash Add more games
+curl -X POST "https://lichess.org/api/stream/games/mystream123/add" \
+  -H "Content-Type: text/plain" \
+  -d "oX66A8F9"
+```
+</CodeGroup>
+
+### Path Parameters
+
+<ParamField path="streamId" type="string" required>
+  Arbitrary stream ID that you define. Use the same ID to add more games later.
+</ParamField>
+
+### Request Body
+
+<ParamField body="gameIds" type="string" required>
+  Game IDs separated by commas
+</ParamField>
+
+### Response
+
+Returns an ND-JSON stream of game states. Each game sends a full game object when added, then state updates after each move.
+
+<ResponseExample>
+```json ND-JSON Stream
+{"type":"gameFull","id":"q7ZvsdUF","variant":{"key":"standard"},"speed":"blitz","rated":true,"initialFen":"startpos","fen":"rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2","player":"black","turns":3,"white":{"id":"player1","rating":2000},"black":{"id":"player2","rating":1980},"moves":"e2e4 c7c5 g1f3","clock":{"initial":180,"increment":0,"white":175,"black":178}}
+{"type":"gameState","id":"q7ZvsdUF","moves":"e2e4 c7c5 g1f3 d7d6","wtime":175000,"btime":176000,"status":"started"}
+```
+</ResponseExample>
+
+### Adding Games to Stream
+
+Use the `/add` endpoint to dynamically add more games to an existing stream:
+
+```bash
+POST /api/stream/games/{streamId}/add
+```
+
+The new games will be added to the same stream connection.
+
+## Stream games by OAuth origin
+
+Stream games created with your OAuth app in real-time.
+
+<CodeGroup>
+```bash GET /api/stream/games/by-oauth-origin
+curl "https://lichess.org/api/stream/games/by-oauth-origin" \
+  -H "Authorization: Bearer <your_token>"
+```
+</CodeGroup>
+
+### Authentication
+
+Requires OAuth token. The stream will emit games created by users authenticated with your OAuth application.
+
+### Response
+
+Returns an ND-JSON stream of game objects created via your OAuth application.
+
+<ResponseExample>
+```json ND-JSON Stream
+{"id":"q7ZvsdUF","rated":true,"variant":"standard","speed":"blitz","perf":"blitz","createdAt":1709736600000,"status":"started","source":"api","players":{"white":{"user":{"name":"player1","id":"player1"},"rating":2000},"black":{"user":{"name":"player2","id":"player2"},"rating":1980}}}
+```
+</ResponseExample>
+
+## Stream personal events
+
+Stream events for the authenticated user.
+
+<CodeGroup>
+```bash GET /api/stream/event
+curl "https://lichess.org/api/stream/event" \
+  -H "Authorization: Bearer <your_token>"
+```
+</CodeGroup>
+
+### Authentication
+
+Requires OAuth token with appropriate scopes.
+
+### Response
+
+Returns a Server-Sent Event stream. Events include:
+
+- `gameStart` - A game was started
+- `gameFinish` - A game was finished
+- `challenge` - A challenge was received
+- `challengeCanceled` - A challenge was canceled
+- `challengeDeclined` - A challenge was declined
+
+<ResponseExample>
+```json Event Stream
+{"type":"gameStart","game":{"id":"q7ZvsdUF","source":"lobby","compat":{"bot":false,"board":true}}}
+{"type":"challenge","challenge":{"id":"abc12345","status":"created","challenger":{"id":"player1","name":"player1","rating":2000},"timeControl":{"type":"clock","limit":180,"increment":0},"variant":{"key":"standard","name":"Standard"},"rated":true}}
+{"type":"gameFinish","game":{"id":"q7ZvsdUF","source":"lobby"}}
+```
+</ResponseExample>

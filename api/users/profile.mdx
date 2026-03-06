@@ -1,0 +1,304 @@
+---
+title: "Get User Profile"
+description: "Read public data of a user"
+---
+
+## Get real-time user data
+
+This endpoint reads public data of a user. If the request is authenticated with OAuth2, the user's private data (like email) is also returned.
+
+<Note>
+  If the user is not online, the response may be cached for up to 1 minute.
+</Note>
+
+### Endpoint
+
+```
+GET https://lichess.org/api/user/{username}
+```
+
+### Path Parameters
+
+<ParamField path="username" type="string" required>
+  The username of the user to fetch
+</ParamField>
+
+### Query Parameters
+
+<ParamField query="trophies" type="boolean" default="false">
+  Include user trophies in the response
+</ParamField>
+
+<ParamField query="profile" type="boolean" default="true">
+  Include the user's profile information (like bio, country, links)
+</ParamField>
+
+<ParamField query="rank" type="boolean" default="false">
+  Include the user's rating rank in each performance type
+</ParamField>
+
+<ParamField query="challenge" type="boolean" default="false">
+  Include information about whether the user can be challenged (requires OAuth)
+</ParamField>
+
+<ParamField query="fideId" type="boolean" default="false">
+  Include the user's FIDE ID if available
+</ParamField>
+
+### Example Request
+
+```bash
+curl "https://lichess.org/api/user/DrNykterstein?trophies=true"
+```
+
+### Response
+
+<ResponseField name="id" type="string">
+  The user's ID (lowercase username)
+</ResponseField>
+
+<ResponseField name="username" type="string">
+  The user's display name
+</ResponseField>
+
+<ResponseField name="perfs" type="object">
+  Performance statistics for each game variant/time control
+  
+  <Expandable title="Performance object">
+    <ResponseField name="games" type="integer">
+      Number of rated games played
+    </ResponseField>
+    
+    <ResponseField name="rating" type="integer">
+      Current rating
+    </ResponseField>
+    
+    <ResponseField name="rd" type="integer">
+      Rating deviation
+    </ResponseField>
+    
+    <ResponseField name="prog" type="integer">
+      Progress in the last 12 games
+    </ResponseField>
+    
+    <ResponseField name="prov" type="boolean">
+      Whether the rating is provisional (fewer than 10 games)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="createdAt" type="integer">
+  Account creation timestamp in milliseconds
+</ResponseField>
+
+<ResponseField name="disabled" type="boolean">
+  Whether the account is disabled (only present if true)
+</ResponseField>
+
+<ResponseField name="tosViolation" type="boolean">
+  Whether the user violated the Terms of Service (only present if true)
+</ResponseField>
+
+<ResponseField name="profile" type="object">
+  User profile information (if `profile=true` and user has filled it)
+  
+  <Expandable title="Profile fields">
+    <ResponseField name="country" type="string">
+      Two-letter country code
+    </ResponseField>
+    
+    <ResponseField name="location" type="string">
+      User's location
+    </ResponseField>
+    
+    <ResponseField name="bio" type="string">
+      User's biography
+    </ResponseField>
+    
+    <ResponseField name="firstName" type="string">
+      User's first name
+    </ResponseField>
+    
+    <ResponseField name="lastName" type="string">
+      User's last name
+    </ResponseField>
+    
+    <ResponseField name="fideRating" type="integer">
+      FIDE rating
+    </ResponseField>
+    
+    <ResponseField name="links" type="string">
+      Social media and other links (space-separated)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="seenAt" type="integer">
+  Last seen timestamp in milliseconds
+</ResponseField>
+
+<ResponseField name="playTime" type="object">
+  Time spent playing
+  
+  <Expandable title="Play time">
+    <ResponseField name="total" type="integer">
+      Total play time in seconds
+    </ResponseField>
+    
+    <ResponseField name="tv" type="integer">
+      Time spent on Lichess TV in seconds
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  Chess title (GM, IM, FM, WGM, WIM, etc.)
+</ResponseField>
+
+<ResponseField name="patron" type="boolean">
+  Whether the user is a Lichess Patron
+</ResponseField>
+
+<ResponseField name="verified" type="boolean">
+  Whether the user is verified (official accounts)
+</ResponseField>
+
+<ResponseField name="url" type="string">
+  Full URL to the user's profile
+</ResponseField>
+
+<ResponseField name="playing" type="string">
+  URL to the game currently being played (if any)
+</ResponseField>
+
+<ResponseField name="count" type="object">
+  Game statistics
+  
+  <Expandable title="Game counts">
+    <ResponseField name="all" type="integer">
+      Total games played
+    </ResponseField>
+    
+    <ResponseField name="rated" type="integer">
+      Rated games
+    </ResponseField>
+    
+    <ResponseField name="ai" type="integer">
+      Games against AI
+    </ResponseField>
+    
+    <ResponseField name="draw" type="integer">
+      Draw games
+    </ResponseField>
+    
+    <ResponseField name="loss" type="integer">
+      Lost games
+    </ResponseField>
+    
+    <ResponseField name="win" type="integer">
+      Won games
+    </ResponseField>
+    
+    <ResponseField name="bookmark" type="integer">
+      Bookmarked games
+    </ResponseField>
+    
+    <ResponseField name="playing" type="integer">
+      Currently playing games
+    </ResponseField>
+    
+    <ResponseField name="import" type="integer">
+      Imported games
+    </ResponseField>
+    
+    <ResponseField name="me" type="integer">
+      Games played against the requester (requires authentication)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="streaming" type="boolean">
+  Whether the user is currently streaming
+</ResponseField>
+
+<ResponseField name="followable" type="boolean">
+  Whether the user can be followed by the requester (requires OAuth)
+</ResponseField>
+
+<ResponseField name="following" type="boolean">
+  Whether the requester follows the user (requires OAuth)
+</ResponseField>
+
+<ResponseField name="blocking" type="boolean">
+  Whether the requester blocks the user (requires OAuth)
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "id": "drnykterstein",
+  "username": "DrNykterstein",
+  "perfs": {
+    "blitz": {
+      "games": 6205,
+      "rating": 3003,
+      "rd": 45,
+      "prog": 15
+    },
+    "rapid": {
+      "games": 452,
+      "rating": 2927,
+      "rd": 47,
+      "prog": -12
+    },
+    "classical": {
+      "games": 34,
+      "rating": 2500,
+      "rd": 98,
+      "prog": 0,
+      "prov": true
+    }
+  },
+  "createdAt": 1290415680000,
+  "profile": {
+    "country": "NO",
+    "location": "Tønsberg, Norway",
+    "bio": "World Chess Champion",
+    "firstName": "Magnus",
+    "lastName": "Carlsen",
+    "fideRating": 2830,
+    "links": "https://twitter.com/MagnusCarlsen"
+  },
+  "seenAt": 1708963200000,
+  "playTime": {
+    "total": 5436200,
+    "tv": 12600
+  },
+  "title": "GM",
+  "patron": true,
+  "verified": true,
+  "url": "https://lichess.org/@/DrNykterstein",
+  "count": {
+    "all": 7891,
+    "rated": 6691,
+    "ai": 0,
+    "draw": 412,
+    "loss": 2156,
+    "win": 5323,
+    "bookmark": 71,
+    "playing": 1,
+    "import": 0
+  },
+  "streaming": false
+}
+```
+
+### Rate Limiting
+
+This endpoint is rate-limited based on:
+- Whether the user is online (offline users have cached responses)
+- Whether the request is authenticated
+- The user's verification status
+
+Authenticated and verified users have higher rate limits.

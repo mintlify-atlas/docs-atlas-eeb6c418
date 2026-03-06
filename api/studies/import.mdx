@@ -1,0 +1,208 @@
+---
+title: Import PGN to Study
+description: Import PGN content into a study as new chapters
+---
+
+## Import PGN chapters
+
+<Info>
+Requires OAuth scope: `study:write`
+</Info>
+
+```http
+POST https://lichess.org/api/study/{studyId}/import-pgn
+```
+
+Import PGN content into a study. Creates one or more chapters from the provided PGN.
+
+<Note>
+- You must be a contributor to the study.
+- Multiple games in the PGN will create multiple chapters.
+- Maximum number of chapters per study is enforced.
+- This endpoint is rate limited based on the number of chapters being imported.
+</Note>
+
+### Path Parameters
+
+<ParamField path="studyId" type="string" required>
+  The study ID (8 characters)
+</ParamField>
+
+### Request Body
+
+Send as `application/x-www-form-urlencoded`:
+
+<ParamField body="name" type="string">
+  Name for the chapter. If importing multiple games, only the first chapter will use this name. Other chapters will use names from the PGN Event tag or a default name.
+  
+  Maximum length: 100 characters
+</ParamField>
+
+<ParamField body="pgn" type="string" required>
+  The PGN content to import. Can contain one or more games separated by blank lines.
+  
+  Supports:
+  - Standard PGN format
+  - Multiple games (each becomes a separate chapter)
+  - Comments and variations
+  - PGN tags (Event, Site, Date, etc.)
+  - Clock annotations
+  - Evaluation annotations
+</ParamField>
+
+<ParamField body="orientation" type="string" default="auto">
+  Chapter orientation. One of:
+  - `auto` - Automatic based on the game
+  - `white` - Always show from white's perspective
+  - `black` - Always show from black's perspective
+</ParamField>
+
+<ParamField body="variant" type="string" default="standard">
+  Chess variant. One of:
+  - `standard`
+  - `chess960`
+  - `crazyhouse`
+  - `antichess`
+  - `atomic`
+  - `horde`
+  - `kingOfTheHill`
+  - `racingKings`
+  - `threeCheck`
+</ParamField>
+
+<ParamField body="mode" type="string" default="normal">
+  Chapter mode. One of:
+  - `normal` - Standard analysis
+  - `practice` - Practice mode (repeatable training)
+  - `gamebook` - Interactive lesson format
+  - `conceal` - Conceal future moves
+</ParamField>
+
+<ParamField body="initial" type="boolean" default="false">
+  If `true`, the first imported chapter becomes the new default chapter when opening the study.
+</ParamField>
+
+<ParamField body="sticky" type="boolean" default="true">
+  If `true`, moves the study participants to the new chapter(s).
+</ParamField>
+
+### Response
+
+Returns information about the imported chapters.
+
+<ResponseField name="chapters" type="array">
+  Array of imported chapter previews
+  
+  <Expandable title="properties">
+    <ResponseField name="id" type="string">
+      The chapter ID
+    </ResponseField>
+    
+    <ResponseField name="name" type="string">
+      The chapter name
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="error" type="string" optional>
+  Error message if the import partially failed
+</ResponseField>
+
+### Example
+
+```bash
+curl -X POST "https://lichess.org/api/study/XtFCFYlM/import-pgn" \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "name=My New Chapter" \
+  -d "pgn=[Event \"Casual Game\"]
+[Site \"lichess.org\"]
+[Result \"*\"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 *" \
+  -d "orientation=white" \
+  -d "mode=normal" \
+  -d "sticky=true"
+```
+
+```json
+{
+  "chapters": [
+    {
+      "id": "kYKDRmpd",
+      "name": "My New Chapter"
+    }
+  ]
+}
+```
+
+### Importing multiple games
+
+You can import multiple games at once by separating them with blank lines in the PGN:
+
+```bash
+curl -X POST "https://lichess.org/api/study/XtFCFYlM/import-pgn" \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "pgn=[Event \"Game 1\"]
+[Site \"lichess.org\"]
+[Result \"1-0\"]
+
+1. e4 e5 2. Nf3 1-0
+
+[Event \"Game 2\"]
+[Site \"lichess.org\"]
+[Result \"0-1\"]
+
+1. d4 d5 2. c4 0-1" \
+  -d "sticky=false"
+```
+
+```json
+{
+  "chapters": [
+    {
+      "id": "abc12345",
+      "name": "Game 1"
+    },
+    {
+      "id": "def67890",
+      "name": "Game 2"
+    }
+  ]
+}
+```
+
+### Error responses
+
+<ResponseExample>
+```json 400 Bad Request
+{
+  "error": "Invalid PGN format"
+}
+```
+
+```json 401 Unauthorized
+{
+  "error": "Missing or invalid API token"
+}
+```
+
+```json 403 Forbidden
+{
+  "error": "You are not a contributor to this study"
+}
+```
+
+```json 404 Not Found
+{
+  "error": "Study not found"
+}
+```
+
+```json 429 Too Many Requests
+{
+  "error": "Rate limit exceeded. Please slow down."
+}
+```
+</ResponseExample>

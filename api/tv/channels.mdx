@@ -1,0 +1,162 @@
+---
+title: "Get Current TV Channels"
+api: "GET /api/tv/channels"
+description: "Get the current games being played on each Lichess TV channel"
+---
+
+## Overview
+
+This endpoint returns information about the current champion game for each TV channel on Lichess. TV channels feature ongoing games filtered by different criteria such as rating level, time control, or chess variant.
+
+## Endpoint
+
+```bash
+GET https://lichess.org/api/tv/channels
+```
+
+## Authentication
+
+No authentication required. This is a public endpoint.
+
+## Request
+
+No parameters required.
+
+### Example Request
+
+```bash cURL
+curl https://lichess.org/api/tv/channels
+```
+
+```javascript JavaScript
+fetch('https://lichess.org/api/tv/channels')
+  .then(response => response.json())
+  .then(data => console.log(data));
+```
+
+```python Python
+import requests
+
+response = requests.get('https://lichess.org/api/tv/channels')
+channels = response.json()
+print(channels)
+```
+
+## Response
+
+Returns a JSON object where each key is a channel name and the value contains information about the current featured game and player.
+
+### Response Fields
+
+<ResponseField name="[channelKey]" type="object">
+  Each channel key (e.g., "best", "bullet", "blitz") contains a champion object
+  
+  <Expandable title="Champion Object">
+    <ResponseField name="user" type="object">
+      Information about the featured player
+      
+      <Expandable title="User Properties">
+        <ResponseField name="id" type="string">
+          User ID
+        </ResponseField>
+        <ResponseField name="name" type="string">
+          Username
+        </ResponseField>
+        <ResponseField name="title" type="string" optional>
+          Player title (GM, IM, FM, etc.)
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    
+    <ResponseField name="rating" type="integer">
+      The player's rating in the relevant category
+    </ResponseField>
+    
+    <ResponseField name="gameId" type="string">
+      The ID of the featured game (8 characters)
+    </ResponseField>
+    
+    <ResponseField name="color" type="string">
+      The color the featured player is playing ("white" or "black")
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Available Channels
+
+Lichess TV features the following channels:
+
+- **best**: Top Rated - Highest rated standard chess games (2150+ rating)
+- **bullet**: Bullet games (less than 3 minutes)
+- **blitz**: Blitz games (3-8 minutes)
+- **rapid**: Rapid games (8-25 minutes)
+- **classical**: Classical games (25+ minutes)
+- **chess960**: Chess960 variant games
+- **kingOfTheHill**: King of the Hill variant
+- **threeCheck**: Three-check variant
+- **antichess**: Antichess variant
+- **atomic**: Atomic variant
+- **horde**: Horde variant
+- **racingKings**: Racing Kings variant
+- **crazyhouse**: Crazyhouse variant
+- **ultraBullet**: UltraBullet games (less than 30 seconds)
+- **bot**: Games involving bots
+- **computer**: Games against computer (AI)
+
+### Example Response
+
+```json
+{
+  "best": {
+    "user": {
+      "id": "magnus",
+      "name": "Magnus",
+      "title": "GM"
+    },
+    "rating": 2847,
+    "gameId": "q7ZvsdUF",
+    "color": "white"
+  },
+  "bullet": {
+    "user": {
+      "id": "hikaru",
+      "name": "Hikaru",
+      "title": "GM"
+    },
+    "rating": 3201,
+    "gameId": "8ZhJgF3b",
+    "color": "black"
+  },
+  "blitz": {
+    "user": {
+      "id": "danya",
+      "name": "Danya"
+    },
+    "rating": 2963,
+    "gameId": "z6brKWaG",
+    "color": "white"
+  }
+}
+```
+
+## Rate Limiting
+
+This endpoint follows standard Lichess API rate limits. Excessive polling is discouraged.
+
+## Notes
+
+- The champions and games update automatically as new games become available
+- Not all channels may have active games at all times
+- Games must be rated and meet minimum rating requirements for most channels
+- Games are selected based on recency - they must have had a move recently to remain featured
+
+## Related Endpoints
+
+- [Get TV Channel Feed](/api/tv/feed) - Stream real-time updates for a TV channel
+- [Event Stream](/api/streaming/events) - Stream personal game and challenge events
+
+## Source Code Reference
+
+- Controller: `app/controllers/Tv.scala:30` (channels method)
+- Model: `modules/tv/src/main/Tv.scala:64-66` (Champion case class)
+- Routes: `conf/routes:42` (GET /api/tv/channels)

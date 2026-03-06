@@ -1,0 +1,490 @@
+---
+title: UI Development
+description: Frontend development workflow for Lichess UI
+---
+
+## Overview
+
+The Lichess client is built with TypeScript, Snabbdom (virtual DOM), and Sass. The UI is organized as a pnpm monorepo workspace with 30+ packages in the `ui/` directory.
+
+## Technology Stack
+
+- **TypeScript**: Type-safe JavaScript
+- **Snabbdom**: Lightweight virtual DOM library
+- **Sass**: CSS preprocessing
+- **esbuild**: Fast JavaScript bundler
+- **pnpm**: Fast, disk-efficient package manager
+
+## UI Directory Structure
+
+```
+ui/
+├── .build/          # Build system source code
+├── @types/          # TypeScript type definitions
+├── analyse/         # Analysis board UI
+├── bits/            # Small reusable UI components
+├── build            # Build script
+├── challenge/       # Challenge UI
+├── chart/           # Chart components
+├── cli/             # CLI tools
+├── dasher/          # User menu
+├── lib/             # Shared library code
+├── lobby/           # Lobby UI
+├── msg/             # Messaging UI
+├── puzzle/          # Puzzle UI
+├── round/           # Live game UI
+├── site/            # Core site UI
+├── test             # Test runner script
+├── tournament/      # Tournament UI
+├── tsconfig.base.json  # Base TypeScript config
+└── ...
+```
+
+## Workspace Structure
+
+The UI is a pnpm monorepo defined in `/pnpm-workspace.yaml`:
+
+```yaml
+packages:
+  - 'ui/*'
+```
+
+Each package in `ui/` has its own `package.json` describing:
+- Source files
+- Dependencies (internal and external)
+- Build configuration
+
+### Internal Dependencies
+
+Packages depend on each other using workspace references:
+
+```json
+{
+  "dependencies": {
+    "lib": "workspace:*",
+    "common": "workspace:*"
+  }
+}
+```
+
+## Building the UI
+
+### Build Script
+
+The `ui/build` script is the main entry point for building UI assets:
+
+```bash
+ui/build --help
+```
+
+### Watch Mode
+
+Start the build system in watch mode to continuously rebuild on changes:
+
+```bash
+ui/build -w
+```
+
+When changes compile successfully, you'll see:
+
+```
+✓ Created manifest.6f3a9d2e.json
+```
+
+The manifest lists public JavaScript and CSS assets. The server communicates updated URLs in subsequent responses.
+
+<Tip>
+Just reload your browser to see the changes - no server restart needed!
+</Tip>
+
+### Building Specific Packages
+
+Build only specific packages:
+
+```bash
+ui/build analyse puzzle
+```
+
+### Production Build
+
+Create an optimized production build:
+
+```bash
+ui/build --prod
+```
+
+### Clean Build
+
+Remove build artifacts and rebuild:
+
+```bash
+ui/build --clean
+```
+
+## Package Configuration
+
+Each package's `package.json` includes a custom `build` property describing how assets are generated.
+
+### Bundle Property
+
+Defines JavaScript modules to create as entry points:
+
+```json
+{
+  "build": {
+    "bundle": "src/**/analyse.*ts"
+  }
+}
+```
+
+This matches files like:
+- `src/analyse.ts`
+- `src/analyse.nvui.ts`
+- `src/analyse.study.ts`
+
+**Naming rule**: Source filenames must be prefixed by their package name.
+
+#### Bundle with Inline Scripts
+
+For critical rendering path code:
+
+```json
+{
+  "build": {
+    "bundle": [
+      "src/site.*Embed.ts",
+      {
+        "module": "src/site.ts",
+        "inline": "src/site.inline.ts"
+      }
+    ]
+  }
+}
+```
+
+Inline scripts are injected into `<script>` tags to avoid FOUC (Flash of Unstyled Content).
+
+### Sync Property
+
+Defines filesystem copies for assets:
+
+```json
+{
+  "build": {
+    "sync": {
+      "node_modules/*stockfish*/*.{js,wasm}": "/public/npm"
+    }
+  }
+}
+```
+
+Useful for:
+- Copying npm packages to `/public/npm`
+- Linking local package versions during development
+
+### Hash Property
+
+Defines assets to content-hash for CDN caching:
+
+```json
+{
+  "build": {
+    "hash": [
+      "/public/lifat/background/montage*.webp",
+      "/public/npm/*",
+      "/public/javascripts/**"
+    ]
+  }
+}
+```
+
+Creates symlinks in `/public/hashed/` with content-based filenames.
+
+## Import Resolution
+
+### TypeScript (tsc)
+
+Uses `exports` in package.json for type checking:
+
+```json
+{
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": {
+        "source": "./src/index.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "./ceval": {
+      "types": "./dist/ceval/index.d.ts",
+      "import": {
+        "source": "./src/ceval/index.ts",
+        "default": "./dist/ceval/index.js"
+      }
+    }
+  }
+}
+```
+
+Import barrel exports:
+
+```typescript
+import { type X, Y, Z } from 'lib/ceval';
+```
+
+### esbuild
+
+Uses only the `source` value for bundling:
+
+```json
+{
+  "exports": {
+    "./boo/*": {
+      "import": {
+        "source": "./src/boo/*.ts"
+      }
+    }
+  }
+}
+```
+
+esbuild performs code splitting to create shared chunks across modules.
+
+## Development Workflow
+
+<Steps>
+
+### Install Dependencies
+
+```bash
+cd ui
+pnpm install
+```
+
+### Start Watch Mode
+
+In one terminal:
+
+```bash
+ui/build -w
+```
+
+### Start the Server
+
+In another terminal:
+
+```bash
+./lila.sh
+run
+```
+
+### Make Changes
+
+Edit TypeScript or Sass files in `ui/*/src/`
+
+The build system will automatically:
+1. Detect changes
+2. Rebuild affected modules
+3. Update the manifest
+4. Generate new hashed filenames
+
+### Reload Browser
+
+Refresh your browser to see the changes.
+
+</Steps>
+
+## Testing
+
+Run UI tests with the test runner:
+
+```bash
+ui/test
+```
+
+See [Testing](/development/testing) for details.
+
+## Key Packages
+
+### lib
+`ui/lib/`
+
+Shared library code:
+- Common utilities
+- Chess engine interface
+- WebSocket handling
+- xhr helpers
+
+### common
+`ui/common/`
+
+Common UI components and helpers.
+
+### analyse
+`ui/analyse/`
+
+Analysis board interface:
+- Move tree navigation
+- Computer evaluation display
+- Study interface
+
+### round
+`ui/round/`
+
+Live game interface:
+- Move input
+- Clock display
+- Game controls (resign, draw, takeback)
+
+### puzzle
+`ui/puzzle/`
+
+Puzzle training interface:
+- Puzzle presentation
+- Solution verification
+- Rating updates
+
+### site
+`ui/site/`
+
+Core site UI:
+- Navigation
+- User menu (dasher)
+- Notifications
+
+## Working with Assets
+
+### Images and Fonts
+
+Static assets go in `/public/`:
+
+```
+public/
+├── images/
+├── fonts/
+├── sounds/
+└── piece/  # Chess piece SVGs
+```
+
+Reference in Sass:
+
+```scss
+background-image: url('../images/logo.svg');
+```
+
+### Stylesheets
+
+Sass files in each package:
+
+```
+ui/analyse/css/
+├── _analysis.scss
+├── _board.scss
+└── analyse.scss  # Entry point
+```
+
+## Linked Packages
+
+For development on external packages (e.g., chessground, pgn-viewer):
+
+<Steps>
+
+### Clone the Package
+
+```bash
+cd ~/projects
+git clone https://github.com/lichess-org/chessground
+cd chessground
+pnpm install
+```
+
+### Link to Lichess
+
+```bash
+cd ~/projects/lila
+pnpm link ~/projects/chessground
+```
+
+### Use Sync in Watch Mode
+
+The `sync` property in `package.json` will copy linked package changes:
+
+```bash
+ui/build -w  # Automatically syncs linked packages
+```
+
+</Steps>
+
+## Build System Internals
+
+The build system source is in `ui/.build/`:
+
+```
+ui/.build/
+├── src/
+│   ├── main.ts        # Entry point
+│   ├── build.ts       # Build orchestration
+│   ├── bundle.ts      # esbuild bundling
+│   ├── sync.ts        # File syncing
+│   ├── hash.ts        # Content hashing
+│   └── ...
+└── package.json
+```
+
+Runs with:
+
+```bash
+node --experimental-strip-types --no-warnings src/main.ts
+```
+
+## Troubleshooting
+
+### Changes Not Appearing
+
+1. Check build output for errors
+2. Clear browser cache (hard refresh: Ctrl+Shift+R)
+3. Verify manifest was updated in `/public/compiled/`
+
+### Build Errors
+
+```bash
+# Clean and rebuild
+ui/build --clean
+
+# Check TypeScript errors
+cd ui/analyse
+pnpm tsc --noEmit
+```
+
+### pnpm Issues
+
+```bash
+# Clear pnpm cache
+pnpm store prune
+
+# Reinstall dependencies
+rm -rf node_modules
+pnpm install
+```
+
+### Node Version
+
+Ensure Node.js v24.11.1+:
+
+```bash
+node -v
+```
+
+## Next Steps
+
+- Learn about [building](/development/building) the entire project
+- Explore [testing](/development/testing) strategies
+- Review the [module structure](/development/modules)
+
+## Additional Resources
+
+- [ui/README.md](https://github.com/lichess-org/lila/blob/master/ui/README.md)
+- [pnpm documentation](https://pnpm.io)
+- [esbuild documentation](https://esbuild.github.io)
+- [Snabbdom documentation](https://github.com/snabbdom/snabbdom)

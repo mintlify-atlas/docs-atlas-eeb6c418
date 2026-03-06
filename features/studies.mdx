@@ -1,0 +1,502 @@
+---
+title: 'Studies'
+description: 'Create, share, and collaborate on chess studies - analyze games, build opening repertoires, and learn together'
+---
+
+## Overview
+
+Lichess Studies is a powerful collaborative tool for chess analysis and learning. Studies allow you to create interactive chess content with annotations, variations, and computer analysis - perfect for building opening repertoires, analyzing games, teaching chess, or preparing for opponents.
+
+<Note>
+  Studies are one of Lichess's most powerful features, combining the depth of chess analysis software with the accessibility of collaborative online tools.
+</Note>
+
+## What is a Study?
+
+A study is a collection of chess chapters where you can:
+
+- Annotate games with comments and arrows
+- Add variations and alternative lines
+- Include computer evaluations
+- Create interactive lessons
+- Collaborate with other users in real-time
+- Build opening repertoires
+- Prepare training materials
+
+## Study Structure
+
+### Studies and Chapters
+
+<Steps>
+  <Step title="Study (Container)">
+    The top-level container with a name, description, and settings
+  </Step>
+  
+  <Step title="Chapters (Content)">
+    Individual games or positions within a study. Each chapter is independent.
+  </Step>
+  
+  <Step title="Positions & Variations">
+    Each chapter contains a game tree with mainline and alternative variations
+  </Step>
+</Steps>
+
+**Chapter Limit**: Maximum 64 chapters per study
+
+**Node Limit**: Maximum 3,000 positions per chapter (prevents performance issues)
+
+## Creating a Study
+
+<Steps>
+  <Step title="Start a Study">
+    Click "Learn" → "Study" → "New Study" or click "+" on study page
+  </Step>
+  
+  <Step title="Configure Study Settings">
+    - Name your study
+    - Set visibility (public, unlisted, or private)
+    - Choose who can view, contribute, and chat
+    - Add optional description
+  </Step>
+  
+  <Step title="Create First Chapter">
+    Choose chapter source:
+    - From scratch (empty board)
+    - From game (paste game URL or PGN)
+    - From position (FEN)
+    - From existing study
+  </Step>
+</Steps>
+
+## Study Visibility
+
+### Visibility Options
+
+<CardGroup cols={3}>
+  <Card title="Public" icon="globe">
+    Visible to everyone, searchable, appears in your profile
+  </Card>
+  
+  <Card title="Unlisted" icon="link">
+    Only accessible via direct link, not searchable
+  </Card>
+  
+  <Card title="Private" icon="lock">
+    Only visible to study members
+  </Card>
+</CardGroup>
+
+### Permission Settings
+
+Control who can interact with your study:
+
+- **Computer Analysis**: Nobody / Only members / Everyone
+- **Opening Explorer**: Nobody / Only members / Everyone  
+- **Clone**: Nobody / Only members / Everyone (allows copying your study)
+- **Chat**: Nobody / Only contributors / Everyone
+
+## Study Members
+
+### Member Roles
+
+<Accordion title="Owner">
+  Full control over the study:
+  - Edit all chapters
+  - Add/remove members
+  - Change study settings
+  - Delete the study
+  - Cannot be removed (can transfer ownership)
+</Accordion>
+
+<Accordion title="Contributor">
+  Can edit content:
+  - Create, edit, and delete chapters
+  - Add annotations and variations
+  - Cannot change study settings
+  - Cannot manage members
+</Accordion>
+
+<Accordion title="Viewer">
+  Read-only access:
+  - Browse all chapters
+  - View annotations
+  - Cannot make changes
+  - Can comment if chat enabled
+</Accordion>
+
+### Inviting Members
+
+1. Click "Study members" button
+2. Enter username
+3. Select role (Contributor or Viewer)
+4. User receives invitation notification
+
+## Creating Chapters
+
+### Chapter Sources
+
+<CardGroup cols={2}>
+  <Card title="From Game" icon="chess">
+    Import any Lichess game by URL or paste PGN
+  </Card>
+  
+  <Card title="From Position" icon="chess-board">
+    Start from a specific position using FEN notation
+  </Card>
+  
+  <Card title="From Scratch" icon="wand-magic-sparkles">
+    Begin with standard starting position or empty board
+  </Card>
+  
+  <Card title="From Study" icon="copy">
+    Import chapter from another study
+  </Card>
+</CardGroup>
+
+### Chapter Settings
+
+- **Name**: Chapter title (auto-generated from game tags if applicable)
+- **Orientation**: Board perspective (White/Black)
+- **Variant**: Support all Lichess variants
+- **Game tags**: PGN tags (Event, White, Black, Result, etc.)
+
+## Annotating Studies
+
+### Adding Comments
+
+<Steps>
+  <Step title="Click on a Position">
+    Navigate to any position in the game tree
+  </Step>
+  
+  <Step title="Add Text Comment">
+    Click comment icon or press 'c' to write analysis
+  </Step>
+  
+  <Step title="Format Text">
+    Use markdown for formatting (bold, italic, lists, etc.)
+  </Step>
+</Steps>
+
+### Shapes and Arrows
+
+Visual annotations:
+- **Right-click and drag**: Draw arrows
+- **Right-click square**: Highlight square
+- **Colors**: Green (good move), red (bad move), blue (alternative), yellow (highlight)
+- **Multiple shapes**: Add as many as needed per position
+
+### Glyphs (Symbolic Annotations)
+
+Standard chess annotation symbols:
+- `!` Good move
+- `!!` Brilliant move  
+- `?` Mistake
+- `??` Blunder
+- `!?` Interesting move
+- `?!` Dubious move
+- `=` Equal position
+- `±` White is slightly better
+- `∓` Black is slightly better
+
+## Working with Variations
+
+### Creating Variations
+
+<Steps>
+  <Step title="Right-click on Move">
+    Right-click any move to open context menu
+  </Step>
+  
+  <Step title="Select 'Add Variation'">
+    Or simply make an alternative move
+  </Step>
+  
+  <Step title="Enter Alternative Line">
+    Play out the variation as far as needed
+  </Step>
+</Steps>
+
+### Promoting Variations
+
+- **Promote to mainline**: Make a variation the main line
+- **Delete variation**: Remove a side line
+- **Navigate**: Use arrows or click moves to explore variations
+
+<Note>
+  Studies support unlimited variations per position, creating complex game trees for thorough analysis.
+</Note>
+
+## Computer Analysis
+
+### Requesting Analysis
+
+1. Open a chapter
+2. Click "Request computer analysis" button
+3. Server analyzes with Stockfish (may take 1-2 minutes)
+4. Evaluations appear on each move
+
+### Analysis Display
+
+- **Evaluation bar**: Visual representation of position evaluation
+- **Numerical evaluation**: Centipawn evaluation (+0.5, -1.2, etc.) or mate count (M5)
+- **Depth**: How deep Stockfish calculated
+- **Best move indicators**: Shows if move matches engine recommendation
+- **Accuracy scores**: Calculated accuracy percentage per player
+
+### Best Move Suggestions
+
+Analysis shows:
+- Whether played move was best
+- Alternative moves and their evaluations
+- Mistakes, inaccuracies, and blunders highlighted
+- Suggested improvements
+
+## Special Study Modes
+
+### Practice Mode
+
+Turn studies into training exercises:
+
+<Steps>
+  <Step title="Enable Practice Mode">
+    Toggle "Practice" in chapter settings
+  </Step>
+  
+  <Step title="Student Plays Moves">
+    User must find the correct moves themselves
+  </Step>
+  
+  <Step title="Automatic Feedback">
+    Correct moves advance, wrong moves show hint
+  </Step>
+  
+  <Step title="Repeat Until Mastery">
+    Practice until moves are memorized
+  </Step>
+</Steps>
+
+Perfect for:
+- Opening repertoire training
+- Tactical motif practice
+- Endgame technique
+
+### Gamebook Mode
+
+Interactive chess lessons:
+
+- Create branching scenarios
+- Add questions with multiple-choice answers
+- Provide contextual hints
+- Guide users through complex ideas
+- Great for chess coaches and teachers
+
+**How it works:**
+1. Enable Gamebook mode in chapter settings
+2. Add comment as "question"
+3. Create variations as "answer choices"
+4. Add feedback comments on each variation
+5. Students work through the material interactively
+
+### Conceal Mode
+
+Hide moves up to a certain ply:
+- Test yourself by hiding opponent's moves
+- Reveal gradually as you progress
+- Useful for guess-the-move training
+
+## Study Features
+
+### Opening Explorer
+
+Access opening databases:
+- **Lichess database**: Millions of Lichess games
+- **Masters database**: High-level GM games
+- **Player database**: Specific player's games
+- Shows popularity, results, and typical continuations
+
+### Server Evaluation
+
+Deep computer analysis:
+- Request deeper analysis than standard
+- Higher depth = more accurate
+- Queued processing for complex positions
+
+### PGN Export
+
+Download studies:
+- Export entire study or individual chapters
+- PGN format compatible with all chess software
+- Includes comments, variations, and annotations
+- Can import into Chessbase, Fritz, etc.
+
+### Cloning Studies
+
+Copy public studies:
+- Clone any public study to your account
+- Modify without affecting original
+- Build upon others' work
+- Great for creating personal variations of popular repertoires
+
+<Note>
+  Study owner can disable cloning if they want to prevent copying.
+</Note>
+
+## Collaborative Features
+
+### Real-time Collaboration
+
+Multiple users editing simultaneously:
+- Changes appear instantly for all members
+- See who's viewing (presence indicators)
+- Built-in chat for discussion
+- Edit same chapter or work on different chapters
+
+### Chat
+
+Integrated messaging:
+- Discuss positions and ideas
+- Ask questions
+- Share variations verbally
+- Only available if study owner enables it
+
+### Spectators
+
+Public studies allow viewing:
+- Anyone can watch edits happen live
+- Read-only unless granted member role
+- Great for streaming analysis sessions
+
+## Study Topics
+
+Categorize studies with topic tags:
+
+- **Opening repertoires**: Build your opening knowledge
+- **Endgame studies**: Technical positions and technique
+- **Tactics**: Tactical patterns and puzzles
+- **Strategy**: Positional concepts
+- **Famous games**: Classic and modern masterpieces
+- **Preparation**: Opponent preparation
+- **Lessons**: Teaching materials
+
+Topics make studies discoverable by search.
+
+## Study Likes and Rankings
+
+Public studies can be liked:
+- "Like" button shows appreciation
+- Popular studies appear in featured section
+- "Hot" studies have many recent likes
+- Encourages quality content creation
+
+## Study Management
+
+### Organizing Chapters
+
+- **Reorder**: Drag chapters to rearrange
+- **Rename**: Edit chapter names anytime
+- **Delete**: Remove unwanted chapters
+- **Duplicate**: Copy chapter within same study
+- **Move**: Transfer chapter to another study
+
+### Study Settings
+
+Modify anytime:
+- Change name and description
+- Update visibility
+- Adjust permissions
+- Add/remove topics
+- Enable/disable sticky comments
+
+### Deleting Studies
+
+Only owner can delete:
+- Permanently removes study and all chapters
+- Cannot be undone
+- Members lose access immediately
+
+## Study Search
+
+Find studies:
+- Search by title, author, or content
+- Filter by topic
+- Sort by popularity, date, or rating
+- Browse featured and trending studies
+- View studies by specific authors
+
+## Study Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Opening Repertoires" icon="book-open">
+    Build complete repertoires with variations and explanations
+  </Card>
+  
+  <Card title="Game Analysis" icon="magnifying-glass">
+    Deeply analyze your games with computer assistance
+  </Card>
+  
+  <Card title="Opponent Prep" icon="user-secret">
+    Study opponent's games and prepare specific lines
+  </Card>
+  
+  <Card title="Teaching" icon="chalkboard-user">
+    Create lessons and training materials for students
+  </Card>
+  
+  <Card title="Team Training" icon="users">
+    Collaborate with team members on preparation
+  </Card>
+  
+  <Card title="Tournament Prep" icon="trophy">
+    Prepare for tournaments by studying positions
+  </Card>
+  
+  <Card title="Endgame Study" icon="chess-rook">
+    Master technical endgames with annotations
+  </Card>
+  
+  <Card title="Historical Games" icon="landmark">
+    Annotate and preserve classic games
+  </Card>
+</CardGroup>
+
+## Study Tips
+
+<Steps>
+  <Step title="Organize Logically">
+    Use clear chapter names and logical ordering
+  </Step>
+  
+  <Step title="Add Context">
+    Include descriptions explaining the study's purpose
+  </Step>
+  
+  <Step title="Use Practice Mode">
+    Enable practice mode for repertoire training
+  </Step>
+  
+  <Step title="Leverage Computer">
+    Request analysis to find improvements
+  </Step>
+  
+  <Step title="Collaborate">
+    Invite training partners or coaches as contributors
+  </Step>
+</Steps>
+
+## Related Features
+
+<CardGroup cols={2}>
+  <Card title="Analysis" href="/features/analysis">
+    Studies include full analysis board functionality
+  </Card>
+  <Card title="Games" href="/features/games">
+    Import games directly into studies
+  </Card>
+  <Card title="Broadcasts" href="/features/broadcasts">
+    Broadcasts are special studies for live events
+  </Card>
+  <Card title="Puzzles" href="/features/puzzles">
+    Create puzzle-like training in studies
+  </Card>
+</CardGroup>

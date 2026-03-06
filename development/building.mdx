@@ -1,0 +1,495 @@
+---
+title: Building
+description: Build commands and compilation for Lichess
+---
+
+## Overview
+
+Lichess consists of two main build systems:
+
+1. **Scala backend**: Built with sbt (Scala Build Tool)
+2. **TypeScript frontend**: Built with a custom build system based on esbuild
+
+This guide covers compilation, packaging, and deployment builds.
+
+## Building the Backend
+
+### sbt Console
+
+The primary interface for building the Scala backend is the sbt console.
+
+#### Starting sbt
+
+```bash
+./lila.sh
+```
+
+This wrapper script:
+- Validates Java installation
+- Creates default config files if missing
+- Launches sbt with configured JVM options
+
+<Note>
+The `.sbtopts` file configures JVM memory:
+- `-J-Xms2g`: Initial heap size (2GB)
+- `-J-Xmx8g`: Maximum heap size (8GB)
+- `-J-Xss2m`: Thread stack size (2MB)
+</Note>
+
+#### Common sbt Commands
+
+<CodeGroup>
+
+```scala compile
+// Compile all modules
+compile
+```
+
+```scala run
+// Compile and run the application
+run
+```
+
+```scala clean
+// Remove build artifacts
+clean
+```
+
+```scala reload
+// Reload build definition after changing build.sbt
+reload
+```
+
+```scala test
+// Run all tests
+test
+```
+
+```scala test-only
+// Run specific test
+testOnly lila.game.GameTest
+```
+
+</CodeGroup>
+
+### Module-Specific Builds
+
+Compile specific modules:
+
+```scala
+// Compile only the game module
+game/compile
+
+// Run tests for user module
+user/test
+
+// Clean and compile rating module
+rating/clean
+rating/compile
+```
+
+### Compilation Order
+
+The `build.sbt` defines module dependencies. sbt compiles modules in order:
+
+1. **Level 1**: core, coreI18n
+2. **Level 2**: ui, common, tree
+3. **Level 3**: db, room, search
+4. **Level 4**: memo, rating
+5. **Level 5+**: Feature modules (game, user, tournament, etc.)
+
+See the [Module Structure](/development/modules) for the complete dependency graph.
+
+### Incremental Compilation
+
+sbt uses incremental compilation:
+- Only changed files are recompiled
+- Dependent modules are recompiled if needed
+- Compilation state is cached
+
+```scala
+// Force full recompilation
+clean
+compile
+```
+
+### Production Packaging
+
+Create a production distribution:
+
+```bash
+# In sbt console
+Universal/packageBin
+```
+
+This creates a zip file in `target/universal/` containing:
+- Compiled classes
+- Dependencies
+- Startup scripts
+- Configuration
+
+## Building the Frontend
+
+### Build Script
+
+The `ui/build` script handles all frontend compilation:
+
+```bash
+ui/build [options] [packages...]
+```
+
+### Build Options
+
+<CodeGroup>
+
+```bash watch
+# Watch mode: rebuild on changes
+ui/build -w
+ui/build --watch
+```
+
+```bash production
+# Production build: minified, optimized
+ui/build --prod
+ui/build -p
+```
+
+```bash clean
+# Clean build artifacts first
+ui/build --clean
+ui/build -c
+```
+
+```bash debug
+# Debug mode: verbose output
+ui/build --debug
+ui/build -d
+```
+
+```bash help
+# Show help
+ui/build --help
+ui/build -h
+```
+
+</CodeGroup>
+
+### Building Specific Packages
+
+Build only specific UI packages:
+
+```bash
+# Build analyse package
+ui/build analyse
+
+# Build multiple packages
+ui/build analyse puzzle round
+
+# Build with watch mode
+ui/build -w analyse puzzle
+```
+
+### Build Process
+
+The build script performs these steps:
+
+<Steps>
+
+### Validate Environment
+
+Checks Node.js version (requires v24.11.1+):
+
+```bash
+Nodejs v24.11.1 or later is required.
+```
+
+### Install Dependencies
+
+Runs `pnpm install` to ensure packages are up-to-date.
+
+### Process Packages
+
+For each package:
+
+1. **Bundle**: Compile TypeScript entry points with esbuild
+2. **Compile Sass**: Generate CSS from .scss files
+3. **Sync**: Copy static assets (images, fonts, npm packages)
+4. **Hash**: Create content-hashed symlinks for CDN caching
+
+### Generate Manifest
+
+Creates `manifest.[hash].json` in `/public/compiled/` mapping:
+- Module names to hashed JavaScript URLs
+- CSS names to hashed CSS URLs
+- Inline scripts
+
+```json
+{
+  "analyse": "/compiled/analyse.6f3a9d2e.js",
+  "analyse.css": "/compiled/analyse.8c2f5a3b.css",
+  "site.inline": "/* inline JS */"
+}
+```
+
+</Steps>
+
+### Build Output
+
+Build artifacts are written to:
+
+```
+public/
+├── compiled/           # Bundled JavaScript and CSS
+│   ├── analyse.6f3a9d2e.js
+│   ├── analyse.8c2f5a3b.css
+│   └── manifest.a1b2c3d4.json
+├── hashed/            # Content-hashed assets
+│   └── image.e5f6g7h8.png -> ../images/image.png
+└── npm/               # Synced npm packages
+    └── stockfish.wasm
+```
+
+### Watch Mode
+
+In watch mode, the build system:
+
+1. Monitors source files for changes
+2. Rebuilds affected packages incrementally
+3. Updates the manifest
+4. Prints success/error messages
+
+```bash
+ui/build -w
+```
+
+Example output:
+
+```
+Building analyse...
+✓ Bundled analyse.ts → analyse.6f3a9d2e.js (1.2s)
+✓ Compiled analyse.scss → analyse.8c2f5a3b.css (0.3s)
+✓ Created manifest.a1b2c3d4.json
+
+Watching for changes...
+```
+
+## Full Build
+
+To build everything from scratch:
+
+<Steps>
+
+### Clean Previous Builds
+
+```bash
+# Clean sbt artifacts
+./lila.sh
+clean
+exit
+
+# Clean UI artifacts
+ui/build --clean
+```
+
+### Build Frontend
+
+```bash
+ui/build --prod
+```
+
+### Build Backend
+
+```bash
+./lila.sh
+compile
+```
+
+</Steps>
+
+## Development Build Workflow
+
+For active development:
+
+<Steps>
+
+### Terminal 1: UI Watch
+
+```bash
+ui/build -w
+```
+
+### Terminal 2: sbt
+
+```bash
+./lila.sh
+run
+```
+
+### Make Changes
+
+Edit Scala or TypeScript files. Both build systems will automatically detect changes and recompile.
+
+### Reload Browser
+
+For frontend changes, just refresh the browser.
+
+For backend changes, the Play Framework will reload automatically.
+
+</Steps>
+
+## Internationalization Build
+
+Translations are compiled during the sbt build:
+
+```scala
+// In build.sbt
+Compile / resourceGenerators += Def.task {
+  I18n.serialize(
+    sourceDir = new File("translation/source"),
+    destDir = new File("translation/dest"),
+    dbs = List("site", "arena", "emails", ...),
+    outputDir = (Compile / resourceManaged).value
+  )
+}.taskValue
+```
+
+Translation files in `translation/source/` are serialized to binary format.
+
+## Optimization
+
+### Backend Optimization
+
+sbt uses:
+- **Incremental compilation**: Only changed files
+- **Parallel compilation**: Multiple modules at once (when possible)
+- **Dependency caching**: Downloaded dependencies cached locally
+
+### Frontend Optimization
+
+esbuild provides:
+- **Fast bundling**: Written in Go, highly parallelized
+- **Tree shaking**: Removes unused code
+- **Minification**: Smaller file sizes (production mode)
+- **Code splitting**: Shared chunks across modules
+- **Source maps**: For debugging (development mode)
+
+### Production Optimizations
+
+```bash
+ui/build --prod
+```
+
+Production mode enables:
+- Minification
+- Dead code elimination
+- Optimized chunk splitting
+- Smaller source maps (or none)
+
+## Build Performance
+
+### Improving sbt Performance
+
+1. **Allocate more memory** in `.sbtopts`:
+   ```
+   -J-Xms4g
+   -J-Xmx16g
+   ```
+
+2. **Use sbt server**: Keep sbt running, don't restart
+   ```bash
+   # Keep this terminal open
+   ./lila.sh
+   ```
+
+3. **Build specific modules**:
+   ```scala
+   game/compile  // Instead of compile
+   ```
+
+### Improving UI Build Performance
+
+1. **Build specific packages**:
+   ```bash
+   ui/build analyse  // Instead of ui/build
+   ```
+
+2. **Use watch mode**: Incremental rebuilds are faster
+   ```bash
+   ui/build -w
+   ```
+
+3. **Upgrade Node.js**: Newer versions are faster
+
+## CI/CD Builds
+
+GitHub Actions builds Lichess on every commit:
+
+```yaml
+# .github/workflows/build.yml
+- name: Build UI
+  run: ui/build --prod
+
+- name: Test Scala
+  run: sbt test
+```
+
+See `.github/workflows/` for the complete CI configuration.
+
+## Troubleshooting
+
+### sbt Out of Memory
+
+```
+java.lang.OutOfMemoryError: Java heap space
+```
+
+Increase heap size in `.sbtopts`:
+
+```
+-J-Xmx16g
+```
+
+### UI Build Fails
+
+```bash
+# Check Node.js version
+node -v  # Should be v24.11.1+
+
+# Reinstall dependencies
+rm -rf ui/node_modules
+cd ui && pnpm install
+
+# Clean build
+ui/build --clean
+```
+
+### Compilation Errors
+
+```scala
+// In sbt, clean and retry
+clean
+compile
+
+// Or for specific module
+game/clean
+game/compile
+```
+
+### Slow Builds
+
+- Check system resources (CPU, RAM)
+- Close other applications
+- Use module-specific builds
+- Keep sbt running (don't restart)
+
+## Next Steps
+
+- Learn about [testing](/development/testing) your builds
+- Understand the [module structure](/development/modules)
+- Explore [UI development](/development/ui-development) workflow
+
+## Additional Resources
+
+- [sbt documentation](https://www.scala-sbt.org/1.x/docs/)
+- [esbuild documentation](https://esbuild.github.io)
+- [ui/README.md](https://github.com/lichess-org/lila/blob/master/ui/README.md)

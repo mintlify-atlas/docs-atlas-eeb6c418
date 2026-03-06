@@ -1,0 +1,173 @@
+---
+title: "API Overview"
+description: "Introduction to the Lichess HTTP API for accessing games, users, tournaments, and more"
+---
+
+## Introduction
+
+The Lichess API provides programmatic access to Lichess's features and data. It's free, open, and used by thousands of applications worldwide.
+
+<CardGroup cols={2}>
+  <Card title="REST API" icon="brackets-curly" href="/api/games/export">
+    Standard HTTP endpoints for games, users, tournaments, and more
+  </Card>
+  <Card title="Streaming API" icon="tower-broadcast" href="/api/games/streaming">
+    Server-Sent Events for real-time game updates and activity
+  </Card>
+  <Card title="Bot API" icon="robot" href="/api/bot/account">
+    Build chess bots that play on Lichess automatically
+  </Card>
+  <Card title="Authentication" icon="key" href="/api/authentication">
+    OAuth2 for accessing user data and actions
+  </Card>
+</CardGroup>
+
+## Base URL
+
+All API requests use the base URL:
+
+```
+https://lichess.org
+```
+
+## Response Formats
+
+The API supports multiple response formats:
+
+<Accordion title="JSON (Application/JSON)">
+  Standard JSON responses for most endpoints. Include `Accept: application/json` header or `.json` extension.
+  
+  ```json
+  {
+    "id": "q7ZvsdUF",
+    "variant": "standard",
+    "speed": "blitz",
+    "status": "mate",
+    "players": {
+      "white": {
+        "user": { "name": "player1", "id": "player1" },
+        "rating": 1500
+      }
+    }
+  }
+  ```
+</Accordion>
+
+<Accordion title="NDJSON (Application/x-ndjson)">
+  Newline-delimited JSON for streaming endpoints. Each line is a complete JSON object.
+  
+  ```json
+  {"id":"abc123","moves":"e2e4"}
+  {"id":"def456","moves":"d2d4"}
+  {"id":"ghi789","moves":"c2c4"}
+  ```
+</Accordion>
+
+<Accordion title="PGN (Application/x-chess-pgn)">
+  Standard chess notation format for game data.
+  
+  ```pgn
+  [Event "Rated Blitz game"]
+  [Site "https://lichess.org/q7ZvsdUF"]
+  [Date "2024.03.06"]
+  [Round "-"]
+  [White "player1"]
+  [Black "player2"]
+  [Result "1-0"]
+  
+  1. e4 e5 2. Nf3 Nc6 1-0
+  ```
+</Accordion>
+
+## Authentication
+
+Most endpoints work without authentication, but some features require an OAuth2 access token:
+
+- Creating games or challenges
+- Accessing private user data
+- Managing your account
+- Bot API endpoints
+
+See the [Authentication guide](/api/authentication) for details.
+
+## Rate Limiting
+
+Rate limits protect the API from abuse:
+
+- **Anonymous requests**: More restrictive limits
+- **Authenticated requests**: Higher limits based on account standing
+- **Streaming endpoints**: Connection-based limits
+
+See [Rate Limits](/api/rate-limits) for specific values.
+
+## Versioning
+
+The Lichess API does not use explicit versioning. Changes are backward-compatible when possible, with deprecation notices for breaking changes.
+
+<Note>
+  Subscribe to the [Lichess changelog](https://lichess.org/@/Lichess/blog) for API updates and announcements.
+</Note>
+
+## Best Practices
+
+<Steps>
+  <Step title="Use streaming endpoints">
+    For real-time data, use streaming endpoints (NDJSON) instead of polling. This reduces load and provides instant updates.
+  </Step>
+  
+  <Step title="Cache responses">
+    Cache API responses when appropriate. Many endpoints include cache headers.
+  </Step>
+  
+  <Step title="Handle errors gracefully">
+    Implement exponential backoff for rate limit errors. Handle network failures with retries.
+  </Step>
+  
+  <Step title="Include User-Agent">
+    Set a descriptive `User-Agent` header with your app name and contact info:
+    ```
+    User-Agent: MyChessApp/1.0 (contact@example.com)
+    ```
+  </Step>
+</Steps>
+
+## HTTP Status Codes
+
+The API uses standard HTTP status codes:
+
+| Code | Meaning |
+|------|---------|
+| 200 | Success |
+| 201 | Resource created |
+| 204 | Success with no content |
+| 400 | Bad request (invalid parameters) |
+| 401 | Unauthorized (missing or invalid token) |
+| 403 | Forbidden (insufficient permissions) |
+| 404 | Resource not found |
+| 429 | Too many requests (rate limited) |
+| 500 | Internal server error |
+
+## Getting Help
+
+<CardGroup cols={2}>
+  <Card title="Discord Community" icon="discord" href="https://discord.gg/lichess">
+    Join the Lichess Discord for API support and discussions
+  </Card>
+  <Card title="GitHub Issues" icon="github" href="https://github.com/lichess-org/lila/issues">
+    Report bugs or request features on GitHub
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={3}>
+  <Card title="Authentication" icon="key" href="/api/authentication">
+    Set up OAuth2 authentication
+  </Card>
+  <Card title="Export Games" icon="chess" href="/api/games/export">
+    Download game data in PGN or JSON
+  </Card>
+  <Card title="Bot API" icon="robot" href="/api/bot/account">
+    Create a chess bot
+  </Card>
+</CardGroup>

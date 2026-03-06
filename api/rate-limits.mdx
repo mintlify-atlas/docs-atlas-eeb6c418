@@ -1,0 +1,304 @@
+---
+title: "Rate Limits"
+description: "Understanding and working with Lichess API rate limiting policies"
+---
+
+## Overview
+
+Lichess implements rate limiting to ensure fair resource usage and protect server infrastructure. Rate limits vary based on authentication status, endpoint type, and account reputation.
+
+<Info>
+  Rate limits are designed to be generous for legitimate use. If you hit limits regularly, consider optimizing your integration or contacting support.
+</Info>
+
+## Rate Limit Tiers
+
+### Anonymous Requests
+
+Requests without authentication:
+
+- **Standard endpoints**: ~15 requests per minute per IP
+- **Search endpoints**: ~5 requests per minute per IP
+- **Export endpoints**: Lower limits for large exports
+- **No streaming endpoints**: Must authenticate to stream
+
+### Authenticated Requests
+
+Requests with OAuth token or personal API token:
+
+- **Standard endpoints**: ~60 requests per minute per token
+- **Search endpoints**: ~15 requests per minute per token
+- **Export endpoints**: Higher limits for bulk data
+- **Streaming endpoints**: Connection-based limits (typically 1-5 concurrent)
+
+### Bot Accounts
+
+Special limits for verified bots:
+
+- **Game endpoints**: Unlimited for active games
+- **Challenge endpoints**: ~120 requests per minute
+- **Move submission**: No limit (reasonable use expected)
+- **Stream connections**: Up to 5 concurrent game streams
+
+<Note>
+  Bot accounts must be verified. See the [Bot API documentation](/api/bot/account) for details.
+</Note>
+
+## Rate Limit Headers
+
+API responses include rate limit information in headers:
+
+```http
+HTTP/1.1 200 OK
+X-RateLimit-Remaining: 45
+X-RateLimit-Reset: 1234567890
+```
+
+| Header | Description |
+|--------|-------------|
+| `X-RateLimit-Remaining` | Requests remaining in current window |
+| `X-RateLimit-Reset` | Unix timestamp when limit resets |
+
+<Warning>
+  Not all endpoints include these headers. Absence doesn't mean unlimited requests.
+</Warning>
+
+## Handling Rate Limits
+
+### 429 Too Many Requests
+
+When you exceed limits, the API returns `429`:
+
+```json
+{
+  "error": "Too many requests. Try again later."
+}
+```
+
+Response includes `Retry-After` header (seconds to wait):
+
+```http
+HTTP/1.1 429 Too Many Requests
+Retry-After: 60
+```
+
+### Recommended Strategy
+
+Implement exponential backoff:
+
+<CodeGroup>
+```python Python
+import time
+import requests
+
+def make_request_with_retry(url, max_retries=3):
+    for attempt in range(max_retries):
+        response = requests.get(url)
+        
+        if response.status_code == 429:
+            retry_after = int(response.headers.get('Retry-After', 60))
+            wait_time = retry_after * (2 ** attempt)  # Exponential backoff
+            print(f"Rate limited. Waiting {wait_time}s...")
+            time.sleep(wait_time)
+            continue
+            
+        return response
+    
+    raise Exception("Max retries exceeded")
+```
+
+```javascript JavaScript
+async function makeRequestWithRetry(url, maxRetries = 3) {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const response = await fetch(url);
+    
+    if (response.status === 429) {
+      const retryAfter = parseInt(response.headers.get('Retry-After') || '60');
+      const waitTime = retryAfter * (2 ** attempt);  // Exponential backoff
+      console.log(`Rate limited. Waiting ${waitTime}s...`);
+      await new Promise(resolve => setTimeout(resolve, waitTime * 1000));
+      continue;
+    }
+    
+    return response;
+  }
+  
+  throw new Error('Max retries exceeded');
+}
+```
+</CodeGroup>
+
+## Endpoint-Specific Limits
+
+### Game Export
+
+Bulk game exports have special considerations:
+
+- `GET /api/games/user/{username}` - Limited by data size and time range
+- `POST /api/games/export/_ids` - Maximum 300 game IDs per request
+- `GET /api/games/export/imports` - Your imported games only
+
+<Tip>
+  Use streaming endpoints (NDJSON) for large exports instead of JSON arrays. They're more memory-efficient and less likely to hit limits.
+</Tip>
+
+### Search Endpoints
+
+Search is computationally expensive:
+
+- `GET /games/search` - Strict limits, requires authentication for heavy use
+- Use specific filters to reduce load
+- Avoid broad date ranges without other filters
+
+### Streaming Endpoints
+
+Connection-based limits:
+
+- `GET /api/stream/event` - 1 connection per user
+- `GET /api/stream/game/{gameId}` - 1 connection per game
+- `GET /api/tv/feed` - Multiple connections allowed
+- `POST /api/stream/games-by-users` - ~5 concurrent users monitored
+
+<Warning>
+  Reconnecting too frequently (>1 per second) may result in temporary blocking. Implement exponential backoff for reconnections.
+</Warning>
+
+## Best Practices
+
+<Steps>
+  <Step title="Cache aggressively">
+    Cache API responses when data doesn't change frequently:
+    - User profiles (cache for 5+ minutes)
+    - Completed games (cache indefinitely)
+    - Tournament results (cache after completion)
+  </Step>
+  
+  <Step title="Use streaming for real-time data">
+    Instead of polling:
+    ```python
+    # Bad: Polling every second
+    while True:
+        games = requests.get('/api/account/playing').json()
+        time.sleep(1)
+    
+    # Good: Stream updates
+    for line in requests.get('/api/stream/event', stream=True).iter_lines():
+        event = json.loads(line)
+        handle_event(event)
+    ```
+  </Step>
+  
+  <Step title="Batch requests when possible">
+    Export multiple games in one request:
+    ```bash
+    # Bad: Multiple requests
+    for game_id in game_ids:
+        curl https://lichess.org/game/export/{game_id}
+    
+    # Good: Single batch request
+    curl -X POST https://lichess.org/api/games/export/_ids \
+      -d "game1,game2,game3"
+    ```
+  </Step>
+  
+  <Step title="Monitor your usage">
+    Track `X-RateLimit-Remaining` headers and adjust request frequency before hitting limits.
+  </Step>
+</Steps>
+
+## Rate Limit Exceptions
+
+Some situations may result in stricter or more lenient limits:
+
+### Stricter Limits
+
+- New accounts (< 1 week old)
+- Accounts with prior API abuse
+- Suspicious activity patterns
+- Excessive failed authentication attempts
+
+### Higher Limits
+
+- Established accounts in good standing
+- Verified bot accounts
+- Apps with prior approval (rare, contact support)
+
+## IP-Based Limits
+
+Limits also apply per IP address:
+
+- Protects against DDoS attacks
+- Shared hosting may affect multiple users
+- VPNs/proxies share limits with other users
+- Cloud providers (AWS, GCP, Azure) may have shared reputation
+
+<Warning>
+  Using multiple accounts to bypass rate limits violates Lichess Terms of Service and may result in permanent bans.
+</Warning>
+
+## Checking Your Limits
+
+Test your current limits:
+
+<CodeGroup>
+```bash cURL
+# Make authenticated request
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+     -i https://lichess.org/api/account
+
+# Check response headers
+# X-RateLimit-Remaining: 58
+# X-RateLimit-Reset: 1678901234
+```
+
+```python Python
+import requests
+
+headers = {'Authorization': 'Bearer YOUR_TOKEN'}
+response = requests.get('https://lichess.org/api/account', headers=headers)
+
+print(f"Remaining: {response.headers.get('X-RateLimit-Remaining')}")
+print(f"Reset at: {response.headers.get('X-RateLimit-Reset')}")
+```
+</CodeGroup>
+
+## What to Do If Blocked
+
+If you're consistently hitting limits:
+
+1. **Review your code**: Look for inefficient polling or excessive requests
+2. **Implement caching**: Reduce redundant API calls
+3. **Use streaming**: Replace polling with event streams
+4. **Spread requests**: Distribute calls over time instead of bursts
+5. **Contact support**: Explain your use case if legitimate needs exceed limits
+
+## Fair Use Policy
+
+Beyond technical limits, follow fair use guidelines:
+
+- Don't scrape the entire game database
+- Don't automate mass challenges or games without permission
+- Don't use the API to spam users
+- Don't reverse engineer or extract training data at scale
+- Respect user privacy and data minimization
+
+<Info>
+  Lichess is a non-profit providing free services. Please use the API responsibly to ensure it remains available for everyone.
+</Info>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="key" href="/api/authentication">
+    Get authenticated tokens for higher limits
+  </Card>
+  <Card title="Streaming API" icon="tower-broadcast" href="/api/games/streaming">
+    Use streaming instead of polling
+  </Card>
+  <Card title="Game Export" icon="download" href="/api/games/export">
+    Export games efficiently
+  </Card>
+  <Card title="Bot API" icon="robot" href="/api/bot/account">
+    Create bots with special rate limits
+  </Card>
+</CardGroup>

@@ -1,0 +1,451 @@
+---
+title: Architecture
+description: Understand the high-level system design and components of the Lichess platform
+---
+
+## Overview
+
+Lichess is built as a highly scalable, fully asynchronous chess server that handles millions of concurrent users. The architecture separates concerns across multiple layers and services, optimized for real-time gameplay and low latency.
+
+<img 
+  src="https://raw.githubusercontent.com/lichess-org/lila/master/public/images/architecture.png" 
+  alt="Lichess production server architecture"
+/>
+
+## System Components
+
+### Core Application (lila)
+
+The main Lichess server, known as **lila** (li[chess in sca]la), is built with:
+
+<CardGroup cols={2}>
+  <Card title="Scala 3" icon="code">
+    Modern, type-safe functional programming language providing excellent concurrency support
+  </Card>
+  
+  <Card title="Play Framework 2.8" icon="play">
+    Web application framework handling HTTP requests, routing, and MVC structure
+  </Card>
+  
+  <Card title="Akka Streams" icon="water">
+    Reactive streams for handling asynchronous, non-blocking data flows
+  </Card>
+  
+  <Card title="MacWire" icon="plug">
+    Compile-time dependency injection for managing component wiring
+  </Card>
+</CardGroup>
+
+The application entry point is `lila.app.Lila:main`, which bootstraps the Play server and initializes all modules.
+
+### Module Architecture
+
+Lichess is organized into **83 modular components** in the `/modules` directory, each with specific responsibilities:
+
+<Accordion title="Level 1 - Foundation Modules">
+  **Core modules** providing base functionality:
+  - `core` - Basic types and utilities
+  - `coreI18n` - Internationalization core
+</Accordion>
+
+<Accordion title="Level 2 - UI & Data Structures">
+  - `ui` - User interface components and templates
+  - `common` - Shared utilities used across modules
+  - `tree` - Chess game tree representation
+</Accordion>
+
+<Accordion title="Level 3 - Infrastructure">
+  - `db` - Database access layer for MongoDB
+  - `room` - Real-time room/channel management
+  - `search` - Elasticsearch integration for game search
+</Accordion>
+
+<Accordion title="Level 4 - Core Services">
+  - `memo` - Caching layer using Caffeine/Scaffeine
+  - `rating` - ELO rating calculations
+</Accordion>
+
+<Accordion title="Level 5 - Domain Logic">
+  - `game` - Game state and logic
+  - `user` - User accounts and profiles
+  - `puzzle` - Tactical puzzles
+  - `study` - Shared analysis boards
+  - `analyse` - Computer analysis integration
+  - `gathering` - Base for tournaments and events
+</Accordion>
+
+<Accordion title="Level 6+ - Feature Modules">
+  Higher-level features like:
+  - `tournament`, `swiss`, `simul` - Competition formats
+  - `relay` - Broadcast of live games
+  - `challenge` - Challenge system
+  - `chat`, `msg` - Communication
+  - `security`, `mod` - Moderation and safety
+  - And many more...
+</Accordion>
+
+<Note>
+Module dependencies are carefully structured to prevent circular dependencies. The `build.sbt` file explicitly defines the dependency hierarchy.
+</Note>
+
+## Frontend Architecture
+
+### Client-Side Stack
+
+<CardGroup cols={2}>
+  <Card title="TypeScript" icon="code">
+    Type-safe JavaScript for all client code
+  </Card>
+  
+  <Card title="Snabbdom" icon="arrow-up-right-dots">
+    Lightweight virtual DOM library for efficient UI updates
+  </Card>
+  
+  <Card title="Sass" icon="palette">
+    CSS preprocessing with variables and mixins
+  </Card>
+  
+  <Card title="esbuild" icon="bolt">
+    Ultra-fast JavaScript bundler
+  </Card>
+</CardGroup>
+
+### UI Package Structure
+
+The frontend is organized as a **pnpm monorepo workspace** in `/ui`:
+
+```
+ui/
+├── analyse/      # Analysis board
+├── site/         # Main site pages
+├── puzzle/       # Puzzle trainer
+├── tournament/   # Tournament pages
+├── lib/          # Shared libraries
+├── build         # Custom build script
+└── .build/       # Build system source
+```
+
+Each package has:
+- `package.json` - Dependencies and build configuration
+- `src/` - TypeScript source files
+- Custom `build` property defining bundle/sync/hash rules
+
+### Build System
+
+The custom `ui/build` script:
+1. **Bundles** TypeScript modules with esbuild
+2. **Generates** content-hashed filenames for cache busting
+3. **Creates** manifest files listing asset URLs
+4. **Syncs** npm dependencies to `/public/npm`
+5. **Watches** for changes in development mode
+
+```bash
+# Watch mode rebuilds on file changes
+ui/build -w
+```
+
+Assets are compiled to `/public/compiled` with 8-character content hashes in filenames.
+
+## Data Layer
+
+### MongoDB
+
+Primary database storing:
+- **4.7+ billion games** in compressed format
+- User profiles and preferences
+- Tournament and simul data
+- Studies and analysis annotations
+- Forum posts and messages
+
+<Note>
+Lichess uses **ReactiveMongo** 1.1.0-RC20, a reactive, non-blocking MongoDB driver for Scala. Database queries are fully asynchronous using Scala Futures.
+</Note>
+
+### Redis
+
+In-memory data store for:
+- **WebSocket coordination** between lila and lila-ws
+- Real-time pub/sub messaging
+- Session management
+- Rate limiting
+- Distributed locks
+
+Uses **Lettuce** 7.5.0 as the Redis client.
+
+### Elasticsearch
+
+Powers the game search engine, indexing:
+- Game metadata and results
+- Player information
+- Opening variations
+- Advanced query filters
+
+Accessed via the **lila-search** client library.
+
+## Real-Time Communication
+
+### WebSocket Server (lila-ws)
+
+A **separate server** handles all WebSocket connections:
+- Written in Scala
+- Optimized for connection handling
+- Communicates with main lila server via Redis pub/sub
+- Handles move broadcasts, chat, and live updates
+
+<Warning>
+In development, lila-ws runs on port 9664 by default. You need both servers running for full functionality.
+</Warning>
+
+### Communication Flow
+
+```
+Browser ←→ lila-ws (WebSocket) ←→ Redis ←→ lila (HTTP)
+```
+
+1. Client connects to lila-ws via WebSocket
+2. lila-ws subscribes to Redis channels
+3. lila publishes events to Redis
+4. lila-ws broadcasts to connected clients
+
+## Chess Engine Integration
+
+### Stockfish
+
+The world's strongest open-source chess engine:
+- Used for computer analysis
+- Evaluates positions and suggests best moves
+- Provides multi-PV (principal variation) analysis
+
+### Fishnet
+
+Distributed computing network for analysis:
+- Community members donate CPU time
+- Client software available at [lichess-org/fishnet](https://github.com/lichess-org/fishnet)
+- Analyzes games asynchronously
+- Results stored in `evalCache` module
+
+## Chess Logic
+
+### scalachess
+
+Pure Scala chess library (separate repository):
+- Implements all chess rules and variants
+- Move validation and generation
+- Position representation
+- PGN parsing and export
+- Rating calculations
+
+Version specified in `project/Dependencies.scala`:
+
+```scala
+object chess {
+  val version = "17.15.3"
+  val org = "com.github.lichess-org.scalachess"
+  // Includes: core, testKit, playJson, rating, tiebreak
+}
+```
+
+## Request Handling
+
+### HTTP Flow
+
+<Steps>
+  <Step title="Nginx (Production)">
+    Reverse proxy handling SSL termination and load balancing
+  </Step>
+  
+  <Step title="Play Framework">
+    Routes requests to appropriate controllers based on URL patterns
+  </Step>
+  
+  <Step title="Controllers">
+    Process requests, interact with modules, and return responses
+  </Step>
+  
+  <Step title="Views">
+    Rendered using **scalatags** - type-safe HTML generation in Scala
+  </Step>
+</Steps>
+
+### Asynchronous Execution
+
+All I/O operations are non-blocking:
+- Database queries return `Future[Result]`
+- WebSocket messages use Akka Streams
+- HTTP calls use Play WS client
+- Rate limiting uses Redis Lua scripts
+
+<Note>
+Lichess uses `scala.concurrent.ExecutionContextOpportunistic` as the default executor for better performance.
+</Note>
+
+## Caching Strategy
+
+Multi-layer caching for optimal performance:
+
+<CardGroup cols={3}>
+  <Card title="CDN" icon="globe">
+    Cloudflare caches static assets globally with 1-year TTL
+  </Card>
+  
+  <Card title="Application Cache" icon="database">
+    Caffeine/Scaffeine in-memory caches for frequently accessed data
+  </Card>
+  
+  <Card title="Redis" icon="bolt">
+    Distributed cache shared across application instances
+  </Card>
+</CardGroup>
+
+Content-hashed URLs (e.g., `site.FE782A9C.js`) ensure cache invalidation when files change.
+
+## Monitoring & Observability
+
+### Kamon
+
+Integrated for metrics and monitoring:
+- System metrics (CPU, memory, GC)
+- Application metrics (request rates, latencies)
+- Custom business metrics
+- Exports to InfluxDB and Prometheus
+
+Dependencies:
+```scala
+kamon.core        // 2.8.1
+kamon.influxdb    // Metrics export
+kamon.prometheus  // Prometheus integration
+```
+
+## Security Features
+
+### Security Module
+
+Handles:
+- Authentication and authorization
+- Password hashing with bcrypt
+- OAuth token management
+- Rate limiting per IP/user
+- Proxy/VPN detection using MaxMind and IP2Proxy
+- User-agent parsing for bot detection
+
+### Play Configuration
+
+Security settings in `conf/base.conf`:
+- Session cookie configuration
+- CSRF protection
+- HTTP header limits
+- Request size limits
+
+## Deployment Architecture
+
+### Development Setup
+
+- Single machine running all components
+- MongoDB and Redis on localhost
+- lila on port 9663
+- lila-ws on port 9664
+
+### Production Setup
+
+- Multiple application servers
+- Separate database clusters
+- CDN for static assets
+- Load balancers
+- Monitoring infrastructure
+
+<Card title="Production Diagram" icon="diagram-project">
+  See the [architecture diagram](https://raw.githubusercontent.com/lichess-org/lila/master/public/images/architecture.png) for production topology as of July 2022
+</Card>
+
+## Key Dependencies
+
+<AccordionGroup>
+  <Accordion title="Backend Libraries">
+    - **Akka** 2.6.21 - Actor system and streams
+    - **ReactiveMongo** 1.1.0-RC20 - MongoDB driver
+    - **Lettuce** 7.5.0 - Redis client
+    - **Caffeine** 3.2.3 - High-performance caching
+    - **Play JSON** 3.0.6 - JSON serialization
+    - **Kamon** 2.8.1 - Metrics and monitoring
+  </Accordion>
+  
+  <Accordion title="Frontend Libraries">
+    - **@lichess-org/chessground** ^10.0.2 - Chessboard UI
+    - **@lichess-org/pgn-viewer** ^2.5.9 - PGN viewer
+    - **chessops** ^0.15 - Chess operations
+    - **snabbdom** 3.5.1 - Virtual DOM
+  </Accordion>
+  
+  <Accordion title="Linting & Formatting">
+    - **oxlint** ^1.50.0 - Fast TypeScript linter
+    - **oxfmt** ^0.35.0 - Code formatter
+    - **stylelint** ^17.3.0 - CSS/Sass linter
+    - **scalafmt** - Scala code formatting
+  </Accordion>
+</AccordionGroup>
+
+## Configuration Management
+
+Configuration uses **HOCON** (Human-Optimized Config Object Notation):
+
+```
+conf/
+├── base.conf                  # Base configuration
+├── application.conf.default   # Default local config template
+└── application.conf           # Your local overrides (gitignored)
+```
+
+Configuration is loaded hierarchically:
+1. `base.conf` - Shared defaults
+2. `version` - Version information
+3. `application.conf` - Local overrides
+
+## Browser Support
+
+Lichess supports modern browsers:
+
+| Browser | Version | Support Level |
+|---------|---------|---------------|
+| Firefox | 115+ | Full (recommended) |
+| Chrome/Chromium | 112+ | Full |
+| Edge | 109+ | Full |
+| Safari | 13.1+ | Reasonable |
+| Opera | 91+ | Reasonable |
+
+<Warning>
+Older browsers are not supported. Modern JavaScript features (ES6+) and WebAssembly are required.
+</Warning>
+
+## Performance Characteristics
+
+Lichess architecture is optimized for:
+
+- **High concurrency** - Millions of concurrent connections
+- **Low latency** - Real-time move transmission under 100ms
+- **Horizontal scalability** - Stateless application servers
+- **Efficient resource usage** - Asynchronous I/O reduces thread overhead
+- **Fast page loads** - Content-hashed assets with aggressive caching
+
+<Note>
+The fully asynchronous design using Scala Futures and Akka Streams allows handling massive traffic with relatively modest hardware.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Module Deep Dive" icon="magnifying-glass" href="/modules">
+    Explore individual modules in detail
+  </Card>
+  
+  <Card title="API Reference" icon="book" href="https://lichess.org/api">
+    Learn about the HTTP API
+  </Card>
+  
+  <Card title="Contributing" icon="code-pull-request" href="https://github.com/lichess-org/lila/blob/master/CONTRIBUTING.md">
+    Start contributing to Lichess
+  </Card>
+  
+  <Card title="lila-ws Repository" icon="globe" href="https://github.com/lichess-org/lila-ws">
+    WebSocket server source code
+  </Card>
+</CardGroup>

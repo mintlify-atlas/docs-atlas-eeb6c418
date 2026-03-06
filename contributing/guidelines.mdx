@@ -1,0 +1,201 @@
+---
+title: Pull Request Guidelines
+description: Best practices for contributing code to Lichess
+---
+
+Follow these guidelines to ensure your pull requests are reviewed quickly and have the best chance of being merged.
+
+## General Pull Request Guidelines
+
+### Explain Your Changes
+
+Every pull request should clearly communicate:
+
+- **Why the change is needed**: What problem does it solve?
+- **What the change does**: How does it address the problem?
+- **Relevant context**: Link to related issues or discussions
+
+<Tip>
+A well-written PR description helps reviewers understand your changes quickly and increases the likelihood of acceptance.
+</Tip>
+
+### Keep PRs Focused
+
+<Warning>
+Prefer small, focused pull requests that change only one thing at a time.
+</Warning>
+
+Small PRs are:
+- Easier to review
+- Less likely to introduce bugs
+- Faster to merge
+- Easier to revert if needed
+
+If you're working on multiple improvements, create separate PRs for each one.
+
+### Mark PRs as Draft
+
+Use GitHub's draft PR feature when:
+
+- You haven't tested the code yet
+- You want early feedback on your approach
+- The PR is a work in progress
+
+<Note>
+Only mark the pull request as "Ready for review" when you have confirmed it works as intended. Test thoroughly and watch for edge cases.
+</Note>
+
+### Link Related Issues
+
+Always link to:
+- The issue your PR addresses
+- Any related discussions or feature requests
+- Forum posts that provide context
+
+Use GitHub's keywords to automatically close issues:
+```markdown
+Closes #1234
+Fixes #5678
+Resolves #9012
+```
+
+## AI-Assisted Code Contributions
+
+Generated AI code can be accepted under specific conditions. If you used AI tools to generate or assist with code, you **must**:
+
+### 1. Review and Understand the Code
+
+<Warning>
+Carefully review and understand all the code you submit. You must be able to explain it if asked during code review.
+</Warning>
+
+- Don't blindly copy-paste AI-generated code
+- Ensure the code follows Lichess conventions
+- Verify the logic is correct and handles edge cases
+
+### 2. Provide Proof of Testing
+
+<Check>
+Include screenshots or ideally a video demonstrating that the changes work correctly.
+</Check>
+
+Manual testing proof is **required** for AI-assisted contributions. Show:
+- The feature working as intended
+- Edge cases handled properly
+- No regressions in existing functionality
+
+### 3. Document AI Usage
+
+In your pull request message or commit messages, include:
+
+- The AI tool you used (e.g., ChatGPT, GitHub Copilot, Claude)
+- The prompts you used to generate the code
+- Which parts were AI-generated vs. manually written
+
+Example:
+```markdown
+## AI Assistance
+
+Used ChatGPT to generate initial TypeScript interface structure with prompt:
+"Create a TypeScript interface for a chess tournament with rounds, players, and standings"
+
+Manually adjusted the implementation to fit Lichess data structures and added validation logic.
+```
+
+## Before Submitting
+
+### Testing Checklist
+
+Before marking your PR as ready:
+
+- [ ] Code runs without errors
+- [ ] Feature works as intended
+- [ ] Edge cases are handled
+- [ ] No console errors or warnings
+- [ ] Code follows [style guidelines](/contributing/code-style)
+- [ ] Tests pass (if applicable)
+
+### Ask First When Unsure
+
+<Info>
+If you're unsure about something or want to check if a change is desired before doing the work, ask in the programming channels on [Discord](https://discord.gg/lichess).
+</Info>
+
+This can save you time and effort by getting feedback early.
+
+## Code Review Process
+
+### What Reviewers Look For
+
+Reviewers will check:
+
+- **Code quality**: Follows Lichess conventions and style
+- **Functionality**: Actually solves the stated problem
+- **Testing**: Evidence of thorough testing
+- **Impact**: Doesn't break existing features
+- **Performance**: Doesn't introduce performance issues
+
+### Responding to Feedback
+
+When you receive review comments:
+
+- Address all feedback promptly
+- Ask questions if anything is unclear
+- Make requested changes or explain why you disagree
+- Mark conversations as resolved after addressing them
+
+### After Approval
+
+Once your PR is approved:
+
+- A maintainer will merge it
+- Your changes will be deployed to production
+- The linked issue will be automatically closed
+
+<Success>
+Congratulations! You've contributed to Lichess and helped millions of chess players.
+</Success>
+
+## Common Pitfalls to Avoid
+
+### Don't Submit Untested Code
+
+Always run and test your code before marking a PR as ready. Reviewers expect that code works when they receive it.
+
+### Don't Make Assumptions About Difficulty
+
+<Warning>
+Non-technical contributors often misjudge implementation difficulty. Focus on describing **what** needs to happen, not **how** you think it should be implemented.
+</Warning>
+
+### Don't Submit Large Refactors Without Discussion
+
+Large-scale refactoring or architectural changes should be discussed with maintainers first. Open an issue or ask on Discord before investing significant time.
+
+### Don't Commit Secrets
+
+<Warning>
+Never commit files that may contain secrets like `.env`, `credentials.json`, API keys, or passwords.
+</Warning>
+
+If you accidentally commit secrets:
+1. Immediately revoke/rotate the compromised credentials
+2. Remove them from git history
+3. Notify maintainers
+
+## Getting Help
+
+If you need assistance:
+
+- **Discord**: Join the [Lichess Discord](https://discord.gg/lichess) programming channels
+- **GitHub Issues**: Comment on the issue you're working on
+- **Documentation**: Check the [development wiki](https://github.com/lichess-org/lila/wiki)
+
+<CardGroup cols={2}>
+  <Card title="Code Style" icon="code" href="/contributing/code-style">
+    Learn Lichess coding conventions
+  </Card>
+  <Card title="Contributing Overview" icon="hand-wave" href="/contributing/overview">
+    Back to contributing overview
+  </Card>
+</CardGroup>

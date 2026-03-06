@@ -1,0 +1,261 @@
+---
+title: 'Get Puzzle Dashboard'
+description: 'Get a user puzzle performance dashboard'
+---
+
+## Endpoint
+
+```bash
+GET https://lichess.org/api/puzzle/dashboard/{days}
+```
+
+## Description
+
+Get puzzle performance statistics for a specific time period. The dashboard provides aggregated metrics about puzzle solving performance, both globally and broken down by tactical themes.
+
+This endpoint powers the puzzle dashboard feature visible on the Lichess website.
+
+## Authentication
+
+<Warning>
+This endpoint requires authentication with OAuth2 or API token.
+</Warning>
+
+Required OAuth2 scopes:
+- `puzzle:read`
+- `web:mod` (for mobile clients)
+
+## Path Parameters
+
+<ParamField path="days" type="integer" required>
+  Number of days to include in the dashboard statistics.
+  
+  Supported values: `1`, `2`, `3`, `7`, `10`, `14`, `21`, `30`, `60`, `90`
+  
+  The API will round to the closest supported value if an unsupported number is provided.
+</ParamField>
+
+## Response
+
+<ResponseField name="days" type="integer" required>
+  The number of days covered by this dashboard
+</ResponseField>
+
+<ResponseField name="global" type="object" required>
+  Overall puzzle performance across all themes
+  
+  <Expandable title="properties">
+    <ResponseField name="nb" type="integer">
+      Total number of puzzles attempted
+    </ResponseField>
+    
+    <ResponseField name="firstWins" type="integer">
+      Number of puzzles solved correctly on first attempt
+    </ResponseField>
+    
+    <ResponseField name="replayWins" type="integer">
+      Number of puzzles solved correctly after replaying (fixing previous failures)
+    </ResponseField>
+    
+    <ResponseField name="puzzleRatingAvg" type="integer">
+      Average rating of puzzles attempted
+    </ResponseField>
+    
+    <ResponseField name="performance" type="integer">
+      Calculated performance rating based on success rate and puzzle difficulty.
+      
+      Formula: `puzzleRatingAvg - 500 + round(1000 * firstWins / nb)`
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="themes" type="object" required>
+  Performance statistics broken down by puzzle theme
+  
+  The object keys are theme identifiers (e.g., "fork", "pin", "attackingF2F7"). Each theme contains the same metrics as the global statistics.
+  
+  <Expandable title="example theme object">
+    <ResponseField name="theme" type="string">
+      Human-readable theme name (e.g., "Fork", "Pin")
+    </ResponseField>
+    
+    <ResponseField name="results" type="object">
+      Performance metrics for this theme (same structure as global)
+      
+      <Expandable title="properties">
+        <ResponseField name="nb" type="integer">
+          Number of puzzles attempted with this theme
+        </ResponseField>
+        
+        <ResponseField name="firstWins" type="integer">
+          Puzzles solved on first attempt
+        </ResponseField>
+        
+        <ResponseField name="replayWins" type="integer">
+          Puzzles solved after replay
+        </ResponseField>
+        
+        <ResponseField name="puzzleRatingAvg" type="integer">
+          Average puzzle rating for this theme
+        </ResponseField>
+        
+        <ResponseField name="performance" type="integer">
+          Performance rating for this theme
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Example Request
+
+<CodeGroup>
+```bash cURL - 30 days
+curl https://lichess.org/api/puzzle/dashboard/30 \
+  -H "Authorization: Bearer {your_api_token}"
+```
+
+```bash cURL - 7 days
+curl https://lichess.org/api/puzzle/dashboard/7 \
+  -H "Authorization: Bearer {your_api_token}"
+```
+
+```javascript JavaScript
+const days = 30;
+const response = await fetch(
+  `https://lichess.org/api/puzzle/dashboard/${days}`,
+  {
+    headers: {
+      'Authorization': 'Bearer YOUR_API_TOKEN'
+    }
+  }
+);
+
+const dashboard = await response.json();
+console.log('Global performance:', dashboard.global);
+console.log('Theme breakdown:', dashboard.themes);
+```
+
+```python Python
+import requests
+
+days = 30
+headers = {'Authorization': 'Bearer YOUR_API_TOKEN'}
+response = requests.get(
+    f'https://lichess.org/api/puzzle/dashboard/{days}',
+    headers=headers
+)
+
+dashboard = response.json()
+print(f"Puzzles attempted: {dashboard['global']['nb']}")
+print(f"Performance rating: {dashboard['global']['performance']}")
+```
+</CodeGroup>
+
+## Example Response
+
+```json
+{
+  "days": 30,
+  "global": {
+    "nb": 157,
+    "firstWins": 89,
+    "replayWins": 23,
+    "puzzleRatingAvg": 1647,
+    "performance": 1714
+  },
+  "themes": {
+    "fork": {
+      "theme": "Fork",
+      "results": {
+        "nb": 23,
+        "firstWins": 15,
+        "replayWins": 3,
+        "puzzleRatingAvg": 1589,
+        "performance": 1741
+      }
+    },
+    "pin": {
+      "theme": "Pin",
+      "results": {
+        "nb": 18,
+        "firstWins": 9,
+        "replayWins": 4,
+        "puzzleRatingAvg": 1702,
+        "performance": 1702
+      }
+    },
+    "attackingF2F7": {
+      "theme": "Attacking f2 or f7",
+      "results": {
+        "nb": 12,
+        "firstWins": 8,
+        "replayWins": 2,
+        "puzzleRatingAvg": 1523,
+        "performance": 1690
+      }
+    }
+  }
+}
+```
+
+## Dashboard Metrics Explained
+
+### Performance Rating
+
+The performance rating is calculated using:
+
+```
+performance = puzzleRatingAvg - 500 + round(1000 * firstWins / nb)
+```
+
+This gives a rough estimate of your playing strength in that theme:
+- Solving 50% of puzzles on first try = performance near puzzle rating average
+- Solving 75% on first try = performance ~250 points above average
+- Solving 90% on first try = performance ~400 points above average
+
+### Theme Statistics
+
+Only themes with significant activity are included:
+- Must have attempted at least `nb > global.nb / 40` puzzles
+- Very common themes like "mate" are excluded from the breakdown
+- Length-based themes ("short", "long") are excluded
+- Mate-in-X themes are excluded from analysis
+
+### Time Periods
+
+Supported day values and their use cases:
+- **1-3 days**: Recent daily performance
+- **7 days**: Weekly progress tracking
+- **14-30 days**: Monthly analysis (most commonly used)
+- **60-90 days**: Long-term trend analysis
+
+## Rate Limiting
+
+This endpoint is cached for 10 seconds per user/days combination to reduce database load.
+
+## Use Cases
+
+- Track puzzle solving improvement over time
+- Identify weak tactical themes that need practice
+- Identify strong tactical themes
+- Monitor performance trends
+- Set training goals based on theme performance
+- Build custom training plans focusing on weak areas
+
+## Related Endpoints
+
+- [Get Daily Puzzle](/api/puzzles/daily) - Get the daily puzzle
+- [Get Puzzle Activity](/api/puzzles/activity) - Stream detailed puzzle activity
+
+## Web Interface
+
+This API powers the puzzle dashboard available at:
+```
+https://lichess.org/training/dashboard/{days}
+```
+
+For example:
+- 7 days: https://lichess.org/training/dashboard/7
+- 30 days: https://lichess.org/training/dashboard/30
+- 90 days: https://lichess.org/training/dashboard/90

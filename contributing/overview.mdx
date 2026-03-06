@@ -1,0 +1,124 @@
+---
+title: Contributing Overview
+description: Get started contributing to Lichess
+---
+
+Lichess is a free, open-source chess server that welcomes contributions from developers worldwide. Whether you're fixing bugs, adding features, improving documentation, or translating the site, your contributions help millions of chess players.
+
+## Getting Started
+
+### 1. Set Up Your Development Environment
+
+Before you start coding, you'll need to set up your local development environment:
+
+- Follow the [Lichess Development Onboarding guide](https://github.com/lichess-org/lila/wiki/Lichess-Development-Onboarding) to configure your system
+- Clone the repository and run `./lila.sh` followed by `run` to start the server
+- The development server will be available at `http://localhost:9663`
+
+### 2. Find Something to Work On
+
+The best way to start contributing is by finding an issue that matches your skills:
+
+<CardGroup cols={2}>
+  <Card title="Good First Issues" icon="seedling" href="https://github.com/lichess-org/lila/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22">
+    Issues specifically tagged for newcomers to the codebase
+  </Card>
+  <Card title="No Scala Required" icon="code" href="https://github.com/lichess-org/lila/issues?q=is%3Aissue+is%3Aopen+label%3A%22no+scala%22">
+    Frontend and UI issues that don't require Scala knowledge
+  </Card>
+  <Card title="Non-Technical Issues" icon="paintbrush" href="https://github.com/lichess-org/lila/issues?q=is%3Aissue+is%3Aopen+label%3A%22non+technical%22">
+    Issues requiring artwork, documentation, or design work
+  </Card>
+  <Card title="All Open Issues" icon="list" href="https://github.com/lichess-org/lila/issues">
+    Browse all open issues to find something that interests you
+  </Card>
+</CardGroup>
+
+### 3. Join the Community
+
+Connect with other Lichess developers on [Discord](https://discord.gg/lichess) to:
+
+- Ask questions about the codebase
+- Discuss feature ideas before implementing them
+- Get help with your development environment
+- Collaborate with other contributors
+
+<Tip>
+Before starting work on a feature, consider asking in the Discord programming channels whether the change is desired. This can save you time and ensure your contribution will be accepted.
+</Tip>
+
+## Types of Contributions
+
+### Code Contributions
+
+Lichess is built with:
+- **Backend**: Scala 3 with Play Framework 2.8
+- **Frontend**: TypeScript and snabbdom
+- **Styling**: Sass for CSS generation
+- **Database**: MongoDB for game storage, Redis for real-time communication
+
+See the [Code Style](/contributing/code-style) guide for coding standards.
+
+### Documentation
+
+Documentation improvements are always welcome. Issues tagged [`nontechnical`](https://github.com/lichess-org/lila/issues?q=is%3Aissue+is%3Aopen+label%3A%22non+technical%22) often need documentation work.
+
+### Translations
+
+Lichess is available in over 140 languages thanks to community translators. Help translate at [Lichess on Crowdin](https://crowdin.com/project/lichess).
+
+See the [Translations](/contributing/translations) guide for more details.
+
+### Artwork and Design
+
+Graphic designers and artists can contribute to issues tagged [`nontechnical`](https://github.com/lichess-org/lila/issues?q=is%3Aissue+is%3Aopen+label%3A%22non+technical%22).
+
+## Reporting Bugs
+
+Found a bug? [Create an issue](https://github.com/lichess-org/lila/issues/new) on GitHub.
+
+<Warning>
+Before creating an issue, make sure to:
+1. List the steps to reproduce the problem
+2. Search existing issues to avoid duplicates using [GitHub's advanced search](https://help.github.com/articles/searching-issues/)
+3. Verify it's not a trivial problem or one requiring unrealistic dev time
+</Warning>
+
+<Note>
+For mobile-only bugs, report them to [Lichess mobile](https://github.com/lichess-org/lichobile) instead.
+</Note>
+
+## Suggesting Features
+
+Before creating a feature request:
+
+1. **Discuss on the forum**: Post your idea on the [Lichess Feedback Forum](https://lichess.org/forum/lichess-feedback) to gauge community interest
+2. **Wait for feedback**: Developers may discuss the idea there
+3. **Create an issue**: If the feature is well-received, [create an issue](https://github.com/lichess-org/lila/issues/new) and link to the forum discussion
+
+Make sure your feature request:
+- **Is effective** in delivering a goal (not just cosmetic)
+- **Doesn't rely on assumptions** about implementation difficulty
+- **Is unique** and can't be easily replaced by simpler alternatives
+- **Is clear and concise** with no ambiguities
+
+<Info>
+Feature requests that lack potential or effectiveness may be closed. Focus on explaining what needs to happen, not what you think will happen technically.
+</Info>
+
+## Competence Development Program
+
+Lichess supports contributors by covering costs of relevant training materials and activities. This helps empower contributors and enables future contributions.
+
+Learn more at [Competence Development for Lichess contributors](https://lichess.org/page/competence-development).
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Pull Request Guidelines" icon="code-pull-request" href="/contributing/guidelines">
+    Learn how to create effective pull requests
+  </Card>
+  <Card title="Code Style Guide" icon="code" href="/contributing/code-style">
+    Follow Lichess coding standards
+  </Card>
+</CardGroup>

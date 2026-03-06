@@ -1,0 +1,441 @@
+---
+title: 'Broadcast Rounds'
+description: 'Manage and access broadcast rounds and their games'
+---
+
+## Get Round Details
+
+Get detailed information about a specific broadcast round.
+
+<CodeGroup>
+```bash cURL
+curl -X GET 'https://lichess.org/api/broadcast/{slug1}/{slug2}/{roundId}' \
+  -H 'Accept: application/json'
+```
+
+```javascript JavaScript
+fetch('https://lichess.org/api/broadcast/{slug1}/{slug2}/{roundId}', {
+  headers: {
+    'Accept': 'application/json'
+  }
+})
+  .then(response => response.json())
+  .then(data => console.log(data));
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    f'https://lichess.org/api/broadcast/{slug1}/{slug2}/{round_id}'
+)
+print(response.json())
+```
+</CodeGroup>
+
+### Endpoint
+
+```
+GET https://lichess.org/api/broadcast/{slug1}/{slug2}/{roundId}
+```
+
+### Path Parameters
+
+<ParamField path="slug1" type="string" required>
+  Tournament slug (used for URL formatting)
+</ParamField>
+
+<ParamField path="slug2" type="string" required>
+  Round slug (used for URL formatting)
+</ParamField>
+
+<ParamField path="roundId" type="string" required>
+  The round ID (8 characters)
+</ParamField>
+
+### Response
+
+<ResponseField name="round" type="object">
+  Round information
+  
+  <Expandable title="round properties">
+    <ResponseField name="id" type="string">
+      The unique round identifier
+    </ResponseField>
+    
+    <ResponseField name="name" type="string">
+      The round name
+    </ResponseField>
+    
+    <ResponseField name="slug" type="string">
+      URL-friendly identifier
+    </ResponseField>
+    
+    <ResponseField name="url" type="string">
+      Full URL to the round
+    </ResponseField>
+    
+    <ResponseField name="createdAt" type="integer">
+      Unix timestamp of creation
+    </ResponseField>
+    
+    <ResponseField name="ongoing" type="boolean" optional>
+      Whether the round is currently ongoing
+    </ResponseField>
+    
+    <ResponseField name="finished" type="boolean" optional>
+      Whether the round has finished
+    </ResponseField>
+    
+    <ResponseField name="startsAt" type="integer" optional>
+      Unix timestamp when the round starts/started
+    </ResponseField>
+    
+    <ResponseField name="finishedAt" type="integer" optional>
+      Unix timestamp when the round finished
+    </ResponseField>
+    
+    <ResponseField name="delay" type="integer" optional>
+      Broadcast delay in seconds
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="tour" type="object">
+  Parent tournament information
+</ResponseField>
+
+<ResponseField name="study" type="object">
+  Study settings and permissions
+  
+  <Expandable title="study properties">
+    <ResponseField name="writeable" type="boolean">
+      Whether the current user can contribute
+    </ResponseField>
+    
+    <ResponseField name="features" type="object">
+      Available features for this broadcast
+      
+      <Expandable title="features">
+        <ResponseField name="chat" type="boolean">
+          Whether chat is enabled
+        </ResponseField>
+        
+        <ResponseField name="computer" type="boolean">
+          Whether computer analysis is enabled
+        </ResponseField>
+        
+        <ResponseField name="explorer" type="boolean">
+          Whether opening explorer is enabled
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="games" type="array">
+  Array of chapter previews (games) in the round
+</ResponseField>
+
+<ResponseField name="group" type="object" optional>
+  Group information if applicable
+</ResponseField>
+
+<ResponseField name="photos" type="object" optional>
+  Player photos keyed by player name
+</ResponseField>
+
+<ResponseField name="isSubscribed" type="boolean" optional>
+  Whether the current user is subscribed (requires authentication)
+</ResponseField>
+
+<ResponseField name="socketVersion" type="integer" optional>
+  WebSocket version for real-time updates
+</ResponseField>
+
+### Authentication
+
+Optional. Provide an OAuth token with `study:read` scope to:
+- Access private broadcasts
+- Get subscription status
+- Receive socket version for real-time updates
+
+---
+
+## Get My Rounds
+
+Get broadcast rounds that you have access to manage.
+
+<CodeGroup>
+```bash cURL
+curl -X GET 'https://lichess.org/api/broadcast/my-rounds?nb=20' \
+  -H 'Authorization: Bearer {token}' \
+  -H 'Accept: application/x-ndjson'
+```
+
+```javascript JavaScript
+fetch('https://lichess.org/api/broadcast/my-rounds?nb=20', {
+  headers: {
+    'Authorization': 'Bearer {token}',
+    'Accept': 'application/x-ndjson'
+  }
+})
+  .then(response => response.text())
+  .then(data => console.log(data));
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    'https://lichess.org/api/broadcast/my-rounds',
+    params={'nb': 20},
+    headers={'Authorization': 'Bearer {token}'}
+)
+print(response.text)
+```
+</CodeGroup>
+
+### Endpoint
+
+```
+GET https://lichess.org/api/broadcast/my-rounds
+```
+
+### Query Parameters
+
+<ParamField query="nb" type="integer" optional>
+  Maximum number of rounds to return
+</ParamField>
+
+### Response
+
+Returns a stream of rounds in NDJSON format where you have contributor access.
+
+### Authentication
+
+**Required**. OAuth token with `study:read` scope.
+
+---
+
+## Export Round PGN
+
+Download all games from a broadcast round as PGN.
+
+<CodeGroup>
+```bash cURL
+curl -X GET 'https://lichess.org/api/broadcast/round/{roundId}.pgn' \
+  --output round.pgn
+```
+
+```javascript JavaScript
+fetch('https://lichess.org/api/broadcast/round/{roundId}.pgn')
+  .then(response => response.text())
+  .then(pgn => console.log(pgn));
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    f'https://lichess.org/api/broadcast/round/{round_id}.pgn'
+)
+with open('round.pgn', 'w') as f:
+    f.write(response.text)
+```
+</CodeGroup>
+
+### Endpoint
+
+```
+GET https://lichess.org/api/broadcast/round/{roundId}.pgn
+```
+
+### Path Parameters
+
+<ParamField path="roundId" type="string" required>
+  The round ID (8 characters)
+</ParamField>
+
+### Response
+
+Returns PGN data for all games in the round as `application/x-chess-pgn`.
+
+---
+
+## Stream Round Games
+
+Stream all games from a broadcast round in real-time as they are updated.
+
+<CodeGroup>
+```bash cURL
+curl -X GET 'https://lichess.org/api/stream/broadcast/round/{roundId}.pgn' \
+  -H 'Accept: application/x-chess-pgn'
+```
+
+```javascript JavaScript
+fetch('https://lichess.org/api/stream/broadcast/round/{roundId}.pgn', {
+  headers: {
+    'Accept': 'application/x-chess-pgn'
+  }
+})
+  .then(async response => {
+    const reader = response.body.getReader();
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      console.log(new TextDecoder().decode(value));
+    }
+  });
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    f'https://lichess.org/api/stream/broadcast/round/{round_id}.pgn',
+    stream=True
+)
+
+for chunk in response.iter_content(chunk_size=1024):
+    if chunk:
+        print(chunk.decode('utf-8'))
+```
+</CodeGroup>
+
+### Endpoint
+
+```
+GET https://lichess.org/api/stream/broadcast/round/{roundId}.pgn
+```
+
+### Path Parameters
+
+<ParamField path="roundId" type="string" required>
+  The round ID (8 characters)
+</ParamField>
+
+### Response
+
+Returns a persistent streaming connection that sends updated PGN data as games progress. The stream stays open and sends updates as they occur.
+
+<Note>
+  The stream includes keep-alive spaces every 60 seconds to maintain the connection.
+</Note>
+
+### Rate Limits
+
+- Higher limits for verified users
+- Connection limits apply per IP address
+
+---
+
+## Reset Round
+
+Reset a broadcast round, clearing all games and allowing it to be re-synced.
+
+<CodeGroup>
+```bash cURL
+curl -X POST 'https://lichess.org/api/broadcast/round/{roundId}/reset' \
+  -H 'Authorization: Bearer {token}'
+```
+
+```javascript JavaScript
+fetch('https://lichess.org/api/broadcast/round/{roundId}/reset', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer {token}'
+  }
+})
+  .then(response => response.json())
+  .then(data => console.log(data));
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    f'https://lichess.org/api/broadcast/round/{round_id}/reset',
+    headers={'Authorization': 'Bearer {token}'}
+)
+print(response.json())
+```
+</CodeGroup>
+
+### Endpoint
+
+```
+POST https://lichess.org/api/broadcast/round/{roundId}/reset
+```
+
+### Path Parameters
+
+<ParamField path="roundId" type="string" required>
+  The round ID (8 characters)
+</ParamField>
+
+### Response
+
+Returns success confirmation.
+
+### Authentication
+
+**Required**. OAuth token with `study:write` scope. You must be a contributor to the broadcast.
+
+<Warning>
+  This action cannot be undone. All games in the round will be removed.
+</Warning>
+
+---
+
+## Get Round Stats
+
+Get viewership statistics for a broadcast round.
+
+<CodeGroup>
+```bash cURL
+curl -X GET 'https://lichess.org/broadcast/round/{roundId}/stats' \
+  -H 'Accept: application/json'
+```
+
+```javascript JavaScript
+fetch('https://lichess.org/broadcast/round/{roundId}/stats', {
+  headers: {
+    'Accept': 'application/json'
+  }
+})
+  .then(response => response.json())
+  .then(data => console.log(data));
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    f'https://lichess.org/broadcast/round/{round_id}/stats'
+)
+print(response.json())
+```
+</CodeGroup>
+
+### Endpoint
+
+```
+GET https://lichess.org/broadcast/round/{roundId}/stats
+```
+
+### Path Parameters
+
+<ParamField path="roundId" type="string" required>
+  The round ID (8 characters)
+</ParamField>
+
+### Response
+
+<ResponseField name="viewers" type="array">
+  Array of viewer count data points. Each element is `[timestamp, count]` where timestamp is in seconds and count is the number of concurrent viewers.
+</ResponseField>
+
+<ResponseField name="unique" type="integer" optional>
+  Total number of unique viewers (if greater than 0)
+</ResponseField>

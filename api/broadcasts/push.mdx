@@ -1,0 +1,238 @@
+---
+title: 'Push to Broadcast'
+description: 'Push PGN data to a broadcast round for manual game updates'
+---
+
+## Push PGN to Round
+
+Manually push chess games in PGN format to a broadcast round. This endpoint allows you to update games without configuring an upstream source URL.
+
+<CodeGroup>
+```bash cURL
+curl -X POST 'https://lichess.org/api/broadcast/round/{roundId}/push' \
+  -H 'Authorization: Bearer {token}' \
+  -H 'Content-Type: text/plain' \
+  --data-binary '@games.pgn'
+```
+
+```javascript JavaScript
+const pgn = `[Event "Test Game"]
+[Site "?"]
+[Date "2024.03.06"]
+[White "Player1"]
+[Black "Player2"]
+[Result "*"]
+
+1. e4 e5 2. Nf3 Nc6 *`;
+
+fetch('https://lichess.org/api/broadcast/round/{roundId}/push', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer {token}',
+    'Content-Type': 'text/plain'
+  },
+  body: pgn
+})
+  .then(response => response.json())
+  .then(data => console.log(data));
+```
+
+```python Python
+import requests
+
+pgn = """
+[Event "Test Game"]
+[Site "?"]
+[Date "2024.03.06"]
+[White "Player1"]
+[Black "Player2"]
+[Result "*"]
+
+1. e4 e5 2. Nf3 Nc6 *
+"""
+
+response = requests.post(
+    f'https://lichess.org/api/broadcast/round/{round_id}/push',
+    headers={
+        'Authorization': 'Bearer {token}',
+        'Content-Type': 'text/plain'
+    },
+    data=pgn.encode('utf-8')
+)
+print(response.json())
+```
+</CodeGroup>
+
+### Endpoint
+
+```
+POST https://lichess.org/api/broadcast/round/{roundId}/push
+```
+
+### Path Parameters
+
+<ParamField path="roundId" type="string" required>
+  The round ID (8 characters)
+</ParamField>
+
+### Request Body
+
+Raw PGN data as `text/plain`. The request body should contain one or more chess games in PGN format.
+
+**PGN Requirements:**
+- Each game must include standard PGN headers (Event, Site, Date, White, Black, Result)
+- Games can be ongoing (use `*` as the result)
+- Multiple games can be sent in a single request, separated by blank lines
+- Maximum of 64 chapters (games) per broadcast
+
+### Response
+
+<ResponseField name="games" type="array">
+  Array of results for each game in the PGN. Each element is either a success or failure object.
+  
+  <Expandable title="Success object">
+    <ResponseField name="tags" type="object">
+      The PGN tags for the successfully processed game
+    </ResponseField>
+    
+    <ResponseField name="moves" type="integer">
+      Number of moves in the game
+    </ResponseField>
+  </Expandable>
+  
+  <Expandable title="Failure object">
+    <ResponseField name="tags" type="object">
+      The PGN tags for the failed game (may be empty if parsing failed)
+    </ResponseField>
+    
+    <ResponseField name="error" type="string">
+      Error message describing why the game failed to process
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "games": [
+    {
+      "tags": {
+        "Event": "Test Game",
+        "White": "Player1",
+        "Black": "Player2"
+      },
+      "moves": 4
+    },
+    {
+      "tags": {
+        "Event": "Another Game",
+        "White": "Player3",
+        "Black": "Player4"
+      },
+      "error": "Invalid move: Nxe5"
+    }
+  ]
+}
+```
+
+### Authentication
+
+**Required**. OAuth token with `study:write` scope. You must be a contributor to the broadcast.
+
+### Important Notes
+
+<Warning>
+  **Upstream URL Restriction**: You can only push to rounds that do NOT have an upstream URL configured. If the round has an upstream source (URL, game IDs, or user IDs), the push will be rejected with an error.
+</Warning>
+
+<Info>
+  **Automatic Features**:
+  - Player names are automatically enriched with FIDE information when available
+  - Team information is automatically extracted and updated if configured
+  - The round will automatically start if it hasn't started yet (for non-official broadcasts)
+  - The round will automatically finish when all games are complete
+  - Broadcast delay is respected if configured
+</Info>
+
+<Note>
+  **Matching Games**: Games are matched to existing chapters by player names. If a game with the same White and Black players exists, it will be updated. Otherwise, a new chapter is created.
+</Note>
+
+### Error Responses
+
+<ResponseField name="403 Forbidden">
+  You don't have permission to contribute to this broadcast
+</ResponseField>
+
+<ResponseField name="400 Bad Request">
+  The round has an upstream URL configured and cannot accept pushed games
+</ResponseField>
+
+<ResponseField name="404 Not Found">
+  The round ID does not exist
+</ResponseField>
+
+### Rate Limits
+
+Push requests are subject to rate limiting. The cost varies by user permissions:
+- Study admins: 1 request per rate limit window
+- Relay permission holders: 2 requests per rate limit window  
+- Titled or verified users: 5 requests per rate limit window
+- Other users: 10 requests per rate limit window
+
+### Use Cases
+
+**Manual Broadcasting**
+
+The push endpoint is ideal for:
+- Broadcasting games from offline events without DGT boards
+- Events where you're manually entering moves
+- Testing broadcast setup before connecting to live sources
+- Situations where you have PGN files but no live feed
+
+**Integration with Custom Systems**
+
+You can integrate the push API with:
+- Your own game management software
+- Custom data collection tools
+- Automated scripts that generate PGN from other sources
+- Mobile apps for on-site broadcasting
+
+### Example: Multi-game Push
+
+```pgn
+[Event "Championship 2024"]
+[Site "New York"]
+[Date "2024.03.06"]
+[Round "1"]
+[White "Carlsen, Magnus"]
+[Black "Nakamura, Hikaru"]
+[Result "*"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 *
+
+[Event "Championship 2024"]
+[Site "New York"]
+[Date "2024.03.06"]
+[Round "1"]
+[White "Caruana, Fabiano"]
+[Black "Firouzja, Alireza"]
+[Result "*"]
+
+1. d4 Nf6 2. c4 e6 3. Nf3 d5 *
+```
+
+### Monitoring and Debugging
+
+<Tip>
+  Use the response to check which games were successfully processed:
+  - Games with the `moves` field were accepted
+  - Games with the `error` field failed - check the error message
+  - Partial success is possible (some games succeed, others fail)
+</Tip>
+
+You can also:
+- View the broadcast round to confirm games appear correctly
+- Check the sync log in the broadcast admin interface
+- Use the round stats endpoint to monitor viewer engagement

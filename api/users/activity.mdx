@@ -1,0 +1,427 @@
+---
+title: "Get User Activity"
+description: "Read data about a user's recent activity"
+---
+
+## Get user activity feed
+
+This endpoint reads the most recent activities of a user, including games played, puzzles solved, tournaments joined, and more.
+
+<Info>
+  Activity data is collected in daily intervals and may not reflect real-time activity.
+</Info>
+
+### Endpoint
+
+```
+GET https://lichess.org/api/user/{username}/activity
+```
+
+### Path Parameters
+
+<ParamField path="username" type="string" required>
+  The username of the user whose activity to fetch
+</ParamField>
+
+### Example Request
+
+```bash
+curl "https://lichess.org/api/user/DrNykterstein/activity"
+```
+
+### Response
+
+Returns an array of activity objects, each representing activity in a specific time interval (typically 1-2 weeks).
+
+<ResponseField name="interval" type="object">
+  Time period for this activity
+  
+  <Expandable title="Interval">
+    <ResponseField name="start" type="integer">
+      Start timestamp in milliseconds
+    </ResponseField>
+    
+    <ResponseField name="end" type="integer">
+      End timestamp in milliseconds
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="games" type="object">
+  Games played during this interval, grouped by performance type
+  
+  <Expandable title="Games by variant">
+    Each key is a performance type (blitz, rapid, classical, etc.) with:
+    
+    <ResponseField name="win" type="integer">
+      Number of wins
+    </ResponseField>
+    
+    <ResponseField name="loss" type="integer">
+      Number of losses
+    </ResponseField>
+    
+    <ResponseField name="draw" type="integer">
+      Number of draws
+    </ResponseField>
+    
+    <ResponseField name="rp" type="object">
+      Rating progress
+      
+      <Expandable title="Rating progress">
+        <ResponseField name="before" type="integer">
+          Rating before this period
+        </ResponseField>
+        
+        <ResponseField name="after" type="integer">
+          Rating after this period
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="puzzles" type="object">
+  Puzzle training activity
+  
+  <Expandable title="Puzzle stats">
+    <ResponseField name="score" type="object">
+      Puzzle performance
+      
+      <Expandable title="Score">
+        <ResponseField name="win" type="integer">
+          Puzzles solved correctly
+        </ResponseField>
+        
+        <ResponseField name="loss" type="integer">
+          Puzzles failed
+        </ResponseField>
+        
+        <ResponseField name="draw" type="integer">
+          Puzzles solved with hints
+        </ResponseField>
+        
+        <ResponseField name="rp" type="object">
+          Rating progress (before/after)
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="tournaments" type="object">
+  Tournament participation
+  
+  <Expandable title="Tournament entries">
+    <ResponseField name="nb" type="integer">
+      Number of tournaments joined
+    </ResponseField>
+    
+    <ResponseField name="best" type="array">
+      Best tournament results
+      
+      <Expandable title="Tournament entry">
+        <ResponseField name="tournament" type="object">
+          Tournament information
+          
+          <Expandable title="Tournament details">
+            <ResponseField name="id" type="string">
+              Tournament ID
+            </ResponseField>
+            
+            <ResponseField name="name" type="string">
+              Tournament name
+            </ResponseField>
+          </Expandable>
+        </ResponseField>
+        
+        <ResponseField name="nbGames" type="integer">
+          Games played in the tournament
+        </ResponseField>
+        
+        <ResponseField name="score" type="integer">
+          Tournament score
+        </ResponseField>
+        
+        <ResponseField name="rank" type="integer">
+          Final rank in the tournament
+        </ResponseField>
+        
+        <ResponseField name="rankPercent" type="integer">
+          Rank as a percentage (0-100)
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="practice" type="array">
+  Practice positions completed
+  
+  Each entry contains:
+  - `url`: Link to the practice study
+  - `name`: Name of the practice study
+  - `nbPositions`: Number of positions completed
+</ResponseField>
+
+<ResponseField name="simuls" type="array">
+  Simul participation (simultaneous exhibitions)
+  
+  <Expandable title="Simul details">
+    <ResponseField name="id" type="string">
+      Simul ID
+    </ResponseField>
+    
+    <ResponseField name="name" type="string">
+      Simul name
+    </ResponseField>
+    
+    <ResponseField name="isHost" type="boolean">
+      Whether the user hosted the simul
+    </ResponseField>
+    
+    <ResponseField name="variants" type="array">
+      Chess variants played
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="correspondenceMoves" type="object">
+  Moves made in correspondence games
+  
+  <Expandable title="Correspondence moves">
+    <ResponseField name="nb" type="integer">
+      Number of moves made
+    </ResponseField>
+    
+    <ResponseField name="games" type="array">
+      Sample games with recent moves
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="correspondenceEnds" type="object">
+  Correspondence games completed, grouped by variant
+  
+  Each variant contains:
+  - `score`: Win/loss/draw counts
+  - `games`: Sample completed games
+</ResponseField>
+
+<ResponseField name="follows" type="object">
+  Following activity
+  
+  <Expandable title="Follow stats">
+    <ResponseField name="in" type="object">
+      Followers gained
+      
+      <Expandable title="Follower details">
+        <ResponseField name="ids" type="array">
+          User IDs of new followers
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    
+    <ResponseField name="out" type="object">
+      Users followed
+      
+      <Expandable title="Following details">
+        <ResponseField name="ids" type="array">
+          User IDs of newly followed users
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="studies" type="array">
+  Studies created during this period
+  
+  Each entry contains:
+  - `id`: Study ID
+  - `name`: Study name
+</ResponseField>
+
+<ResponseField name="teams" type="array">
+  Teams joined
+  
+  Each entry contains:
+  - `url`: Team URL
+  - `name`: Team name
+  - `flair`: Team flair (optional)
+</ResponseField>
+
+<ResponseField name="posts" type="array">
+  Forum posts made
+  
+  <Expandable title="Forum post">
+    <ResponseField name="topicUrl" type="string">
+      URL to the forum topic
+    </ResponseField>
+    
+    <ResponseField name="topicName" type="string">
+      Forum topic name
+    </ResponseField>
+    
+    <ResponseField name="posts" type="array">
+      Posts in the topic
+      
+      <Expandable title="Post details">
+        <ResponseField name="url" type="string">
+          Direct link to the post
+        </ResponseField>
+        
+        <ResponseField name="text" type="string">
+          Post text (truncated to 500 characters)
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="patron" type="object">
+  Patron support activity
+  
+  <Expandable title="Patron details">
+    <ResponseField name="months" type="integer">
+      Number of months supported
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="stream" type="boolean">
+  Whether the user streamed during this period
+</ResponseField>
+
+<ResponseField name="storm" type="object">
+  Puzzle Storm activity
+  
+  <Expandable title="Storm stats">
+    <ResponseField name="runs" type="integer">
+      Number of runs
+    </ResponseField>
+    
+    <ResponseField name="score" type="integer">
+      Best score
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="racer" type="object">
+  Puzzle Racer activity
+  
+  <Expandable title="Racer stats">
+    <ResponseField name="runs" type="integer">
+      Number of races
+    </ResponseField>
+    
+    <ResponseField name="score" type="integer">
+      Best score
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="streak" type="object">
+  Puzzle Streak activity
+  
+  <Expandable title="Streak stats">
+    <ResponseField name="runs" type="integer">
+      Number of attempts
+    </ResponseField>
+    
+    <ResponseField name="score" type="integer">
+      Best streak
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example Response
+
+```json
+[
+  {
+    "interval": {
+      "start": 1708300800000,
+      "end": 1708905600000
+    },
+    "games": {
+      "blitz": {
+        "win": 45,
+        "loss": 32,
+        "draw": 8,
+        "rp": {
+          "before": 2987,
+          "after": 3003
+        }
+      },
+      "rapid": {
+        "win": 12,
+        "loss": 7,
+        "draw": 3,
+        "rp": {
+          "before": 2939,
+          "after": 2927
+        }
+      }
+    },
+    "puzzles": {
+      "score": {
+        "win": 87,
+        "loss": 13,
+        "rp": {
+          "before": 2845,
+          "after": 2891
+        }
+      }
+    },
+    "tournaments": {
+      "nb": 3,
+      "best": [
+        {
+          "tournament": {
+            "id": "abc123",
+            "name": "Titled Arena Feb '24"
+          },
+          "nbGames": 23,
+          "score": 67,
+          "rank": 1,
+          "rankPercent": 1
+        }
+      ]
+    },
+    "correspondenceMoves": {
+      "nb": 45,
+      "games": [
+        {
+          "id": "xyz789",
+          "color": "white",
+          "url": "https://lichess.org/xyz789/white",
+          "opponent": {
+            "user": "opponent123",
+            "rating": 2400
+          }
+        }
+      ]
+    },
+    "follows": {
+      "in": {
+        "ids": ["user1", "user2", "user3"]
+      },
+      "out": {
+        "ids": ["user4", "user5"]
+      }
+    },
+    "storm": {
+      "runs": 12,
+      "score": 89
+    }
+  }
+]
+```
+
+### Notes
+
+- Activity is aggregated in time intervals, typically covering 1-2 weeks
+- The most recent activities are returned first
+- Empty activity periods may be omitted from the response
+- Some fields are only present if there was activity in that category

@@ -1,0 +1,130 @@
+---
+title: Introduction
+description: Learn about Lichess, a free and open-source online chess server focused on realtime gameplay and ease of use
+---
+
+## What is Lichess?
+
+Lichess (short for "li[chess in sca]la") is a free, open-source online chess game server that emphasizes [realtime gameplay](https://lichess.org/games) and ease of use. Built with no ads, tracking, or paywalls, Lichess serves millions of chess players worldwide.
+
+The platform runs entirely on donations and volunteer contributions, making professional-grade chess tools accessible to everyone.
+
+## Key Features
+
+Lichess provides a comprehensive suite of chess features:
+
+<CardGroup cols={2}>
+  <Card title="Play Chess" icon="chess">
+    Real-time games with players worldwide, featuring bullet, blitz, rapid, classical, and correspondence time controls
+  </Card>
+  
+  <Card title="Computer Analysis" icon="brain">
+    Powered by Stockfish and distributed through the fishnet AI cluster using donated computing resources
+  </Card>
+  
+  <Card title="Tournaments & Events" icon="trophy">
+    Organized tournaments, simultaneous exhibitions (simuls), and Swiss-system competitions
+  </Card>
+  
+  <Card title="Training Tools" icon="dumbbell">
+    Tactics trainer, opening explorer, and lessons to improve your game
+  </Card>
+  
+  <Card title="Studies & Analysis" icon="book">
+    Shared analysis boards for collaborative study and game review
+  </Card>
+  
+  <Card title="Community Features" icon="users">
+    Teams, forums, and direct messaging to connect with other players
+  </Card>
+</CardGroup>
+
+### Additional Capabilities
+
+- **Search Engine**: Browse and search through more than 4.7 billion games stored in MongoDB
+- **Mobile Apps**: Native iOS and Android applications for chess on the go
+- **140+ Languages**: UI translations powered by the community through Crowdin
+- **Public Database**: All rated games published as free PGN downloads
+- **HTTP API**: Comprehensive REST API for integrating Lichess into your applications
+
+## Why Choose Lichess?
+
+<CardGroup cols={2}>
+  <Card title="100% Free" icon="hand-holding-heart">
+    No ads, no tracking, no paywalls. All features available to everyone.
+  </Card>
+  
+  <Card title="Open Source" icon="code">
+    Licensed under GNU AGPL v3+. Transparent development on GitHub with active community contributions.
+  </Card>
+  
+  <Card title="High Performance" icon="gauge-high">
+    Fully asynchronous architecture built for scalability with millions of concurrent players.
+  </Card>
+  
+  <Card title="Privacy Focused" icon="shield">
+    No personal data collection or advertising. Your privacy is respected.
+  </Card>
+</CardGroup>
+
+## Technology Stack
+
+Lichess is built with modern, scalable technologies:
+
+- **Backend**: Scala 3 with Play Framework 2.8
+- **Frontend**: TypeScript and snabbdom for reactive UI
+- **Database**: MongoDB for game storage, Elasticsearch for search
+- **Caching**: Redis for real-time communication and data caching
+- **WebSockets**: Separate lila-ws server for handling real-time connections
+- **Chess Logic**: scalachess library for pure chess rules and validation
+- **Styling**: Sass for CSS generation
+
+<Note>
+Lichess runs on a fully asynchronous architecture, making heavy use of Scala Futures and Akka streams to handle millions of requests efficiently.
+</Note>
+
+## Use Cases
+
+### For Players
+
+Play casual or competitive chess games, train with puzzles, analyze your games, and join tournaments—all without spending a penny.
+
+### For Developers
+
+Use the [Lichess API](https://lichess.org/api) to:
+- Build chess applications and bots
+- Access game databases and player statistics
+- Integrate chess functionality into your projects
+- Stream real-time game data
+
+### For Contributors
+
+Join the open-source community to:
+- Add new features to the platform
+- Fix bugs and improve performance
+- Translate the interface into new languages
+- Contribute to documentation
+
+<Card title="Get Started" icon="rocket" href="/quickstart">
+  Set up your local development environment and start contributing
+</Card>
+
+## Community & Support
+
+<CardGroup cols={3}>
+  <Card title="Discord" icon="discord" href="https://discord.gg/lichess">
+    Join the discussion
+  </Card>
+  
+  <Card title="GitHub" icon="github" href="https://github.com/lichess-org/lila">
+    View the source code
+  </Card>
+  
+  <Card title="API Docs" icon="book" href="https://lichess.org/api">
+    Explore the API
+  </Card>
+</CardGroup>
+
+## License
+
+Lichess is licensed under the [GNU Affero General Public License 3](https://github.com/lichess-org/lila/blob/master/COPYING.md) or any later version at your choice. This ensures the platform remains free and open for everyone.

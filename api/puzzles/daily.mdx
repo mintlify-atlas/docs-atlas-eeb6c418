@@ -1,0 +1,160 @@
+---
+title: 'Get Daily Puzzle'
+description: 'Get the daily puzzle in standard and API formats'
+---
+
+## Endpoint
+
+<CodeGroup>
+```bash Standard Format
+GET https://lichess.org/api/puzzle/daily
+```
+
+```bash HTML Format
+GET https://lichess.org/training/daily
+```
+</CodeGroup>
+
+## Description
+
+Fetch the daily puzzle. The endpoint returns a new puzzle each day at midnight UTC.
+
+The daily puzzle is a carefully selected tactical puzzle that changes once per day and is the same for all users.
+
+## Authentication
+
+No authentication required. This endpoint is publicly accessible.
+
+## Response
+
+<ResponseField name="game" type="object" required>
+  Game information where the puzzle originated
+  
+  <Expandable title="properties">
+    <ResponseField name="id" type="string">
+      The game ID from which this puzzle was extracted
+    </ResponseField>
+    
+    <ResponseField name="pgn" type="string">
+      The PGN (Portable Game Notation) of the game
+    </ResponseField>
+    
+    <ResponseField name="perf" type="object">
+      Performance category information
+      
+      <Expandable title="properties">
+        <ResponseField name="key" type="string">
+          Performance type key (e.g., "blitz", "rapid")
+        </ResponseField>
+        
+        <ResponseField name="name" type="string">
+          Human-readable performance type name
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    
+    <ResponseField name="players" type="array">
+      Array of player objects for white and black
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="puzzle" type="object" required>
+  The puzzle data
+  
+  <Expandable title="properties">
+    <ResponseField name="id" type="string">
+      Unique puzzle identifier (5-character alphanumeric)
+    </ResponseField>
+    
+    <ResponseField name="rating" type="integer">
+      The puzzle difficulty rating (similar to Glicko rating)
+    </ResponseField>
+    
+    <ResponseField name="plays" type="integer">
+      Number of times this puzzle has been attempted by users
+    </ResponseField>
+    
+    <ResponseField name="initialPly" type="integer">
+      The ply (half-move) count at which the puzzle position starts
+    </ResponseField>
+    
+    <ResponseField name="solution" type="array">
+      Array of UCI move strings representing the puzzle solution
+    </ResponseField>
+    
+    <ResponseField name="themes" type="array">
+      Array of theme keys (e.g., "fork", "pin", "skewer") describing the puzzle's tactical motifs
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Example Request
+
+<CodeGroup>
+```bash cURL
+curl https://lichess.org/api/puzzle/daily
+```
+
+```javascript JavaScript
+const response = await fetch('https://lichess.org/api/puzzle/daily');
+const dailyPuzzle = await response.json();
+console.log(dailyPuzzle);
+```
+
+```python Python
+import requests
+
+response = requests.get('https://lichess.org/api/puzzle/daily')
+daily_puzzle = response.json()
+print(daily_puzzle)
+```
+</CodeGroup>
+
+## Example Response
+
+```json
+{
+  "game": {
+    "id": "yH1M0p8x",
+    "perf": {
+      "key": "rapid",
+      "name": "Rapid"
+    },
+    "pgn": "e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Be7...",
+    "players": [
+      {
+        "color": "white",
+        "name": "PlayerOne",
+        "userId": "playerone"
+      },
+      {
+        "color": "black",
+        "name": "PlayerTwo",
+        "userId": "playertwo"
+      }
+    ]
+  },
+  "puzzle": {
+    "id": "a1b2c",
+    "rating": 1847,
+    "plays": 12453,
+    "initialPly": 42,
+    "solution": ["e4e5", "f6e4", "d1h5"],
+    "themes": ["middlegame", "fork", "short"]
+  }
+}
+```
+
+## Notes
+
+- The daily puzzle changes at midnight UTC
+- The puzzle is the same for all users on a given day
+- No authentication required
+- Rate limiting applies as per standard API limits
+- The HTML endpoint `/training/daily` provides a user-friendly web interface
+
+## Related Endpoints
+
+- [Get Puzzle Activity](/api/puzzles/activity) - Get user's puzzle solving activity
+- [Get Puzzle Dashboard](/api/puzzles/dashboard) - Get user's puzzle performance dashboard

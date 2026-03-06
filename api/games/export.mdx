@@ -1,0 +1,304 @@
+---
+title: Export Games
+description: Download games in PGN or JSON format
+---
+
+## Export a single game
+
+Download one game in PGN or JSON format.
+
+<CodeGroup>
+```bash GET /game/export/{gameId}
+curl "https://lichess.org/game/export/q7ZvsdUF"
+```
+
+```bash POST /api/games/export/_ids
+curl -X POST "https://lichess.org/api/games/export/_ids" \
+  -H "Content-Type: text/plain" \
+  -d "q7ZvsdUF,iAnNeY0A,oX66A8F9"
+```
+</CodeGroup>
+
+### Path Parameters
+
+<ParamField path="gameId" type="string" required>
+  The game ID (8 characters)
+</ParamField>
+
+### Query Parameters
+
+<ParamField query="moves" type="boolean" default="true">
+  Include the PGN moves
+</ParamField>
+
+<ParamField query="tags" type="boolean" default="true">
+  Include the PGN tags
+</ParamField>
+
+<ParamField query="clocks" type="boolean" default="true">
+  Include clock comments in the PGN moves when available
+</ParamField>
+
+<ParamField query="evals" type="boolean" default="true">
+  Include analysis evaluation comments in the PGN when available
+</ParamField>
+
+<ParamField query="opening" type="boolean" default="true">
+  Include the opening name
+</ParamField>
+
+<ParamField query="literate" type="boolean" default="false">
+  Insert textual annotations in the PGN about the opening, analysis variations, mistakes, and game termination
+</ParamField>
+
+<ParamField query="pgnInJson" type="boolean" default="false">
+  Include the full PGN within the JSON response, in a `pgn` field
+</ParamField>
+
+<ParamField query="accuracy" type="boolean" default="false">
+  Include accuracy percent of each player, when available
+</ParamField>
+
+<ParamField query="division" type="boolean" default="true">
+  Include the division information (opening, middle game, end game boundaries)
+</ParamField>
+
+### Response Format
+
+By default, games are exported in PGN format. Set the `Accept` header to `application/x-ndjson` or `application/json` to get JSON.
+
+<ResponseExample>
+```pgn Example PGN
+[Event "Rated Blitz game"]
+[Site "https://lichess.org/q7ZvsdUF"]
+[Date "2024.03.06"]
+[White "player1"]
+[Black "player2"]
+[Result "1-0"]
+[UTCDate "2024.03.06"]
+[UTCTime "14:30:00"]
+[WhiteElo "2000"]
+[BlackElo "1980"]
+[WhiteRatingDiff "+10"]
+[BlackRatingDiff "-10"]
+[Variant "Standard"]
+[TimeControl "180+0"]
+[ECO "C50"]
+[Opening "Italian Game"]
+[Termination "Normal"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bc4 1-0
+```
+
+```json Example JSON
+{
+  "id": "q7ZvsdUF",
+  "rated": true,
+  "variant": "standard",
+  "speed": "blitz",
+  "perf": "blitz",
+  "createdAt": 1709736600000,
+  "lastMoveAt": 1709736780000,
+  "status": "mate",
+  "players": {
+    "white": {
+      "user": {
+        "name": "player1",
+        "id": "player1"
+      },
+      "rating": 2000,
+      "ratingDiff": 10
+    },
+    "black": {
+      "user": {
+        "name": "player2",
+        "id": "player2"
+      },
+      "rating": 1980,
+      "ratingDiff": -10
+    }
+  },
+  "winner": "white",
+  "opening": {
+    "eco": "C50",
+    "name": "Italian Game",
+    "ply": 5
+  },
+  "moves": "e4 e5 Nf3 Nc6 Bc4",
+  "clock": {
+    "initial": 180,
+    "increment": 0,
+    "totalTime": 180
+  }
+}
+```
+</ResponseExample>
+
+## Export games by IDs
+
+Download multiple games by their IDs.
+
+<CodeGroup>
+```bash POST /api/games/export/_ids
+curl -X POST "https://lichess.org/api/games/export/_ids" \
+  -H "Content-Type: text/plain" \
+  -d "q7ZvsdUF,iAnNeY0A,oX66A8F9"
+```
+</CodeGroup>
+
+### Request Body
+
+<ParamField body="ids" type="string" required>
+  Game IDs separated by commas. Max 300 IDs (or 600 for OAuth).
+</ParamField>
+
+### Query Parameters
+
+Same as single game export, plus:
+
+<ParamField query="players" type="string">
+  URL of a text file containing real names and ratings for PGN tags, one player per line separated by semicolons.
+</ParamField>
+
+### Response
+
+Returns an ND-JSON stream where each line is a JSON object representing one game, or a stream of PGN games separated by double newlines.
+
+## Export games by user
+
+Download all games of a user.
+
+<CodeGroup>
+```bash GET /api/games/user/{username}
+curl "https://lichess.org/api/games/user/player1"
+```
+
+```bash With filters
+curl "https://lichess.org/api/games/user/player1?max=20&rated=true&perfType=blitz,rapid"
+```
+</CodeGroup>
+
+### Path Parameters
+
+<ParamField path="username" type="string" required>
+  The username
+</ParamField>
+
+### Query Parameters
+
+<ParamField query="since" type="integer">
+  Download games played since this timestamp in milliseconds
+</ParamField>
+
+<ParamField query="until" type="integer">
+  Download games played until this timestamp in milliseconds
+</ParamField>
+
+<ParamField query="max" type="integer">
+  Maximum number of games to download. Leave empty to download all games.
+</ParamField>
+
+<ParamField query="vs" type="string">
+  Filter games by opponent username
+</ParamField>
+
+<ParamField query="rated" type="boolean">
+  Filter rated or casual games
+</ParamField>
+
+<ParamField query="perfType" type="string">
+  Filter by game type (perf). Multiple types can be specified, separated by commas.
+  
+  Possible values: `ultraBullet`, `bullet`, `blitz`, `rapid`, `classical`, `correspondence`, `chess960`, `crazyhouse`, `antichess`, `atomic`, `horde`, `kingOfTheHill`, `racingKings`, `threeCheck`
+</ParamField>
+
+<ParamField query="color" type="string">
+  Filter by color played. Possible values: `white`, `black`
+</ParamField>
+
+<ParamField query="analysed" type="boolean">
+  Filter games with or without a computer analysis available
+</ParamField>
+
+<ParamField query="ongoing" type="boolean" default="false">
+  Include ongoing games. The last 3 moves will be omitted.
+</ParamField>
+
+<ParamField query="finished" type="boolean" default="true">
+  Include finished games. Set to `false` to only get ongoing games.
+</ParamField>
+
+<ParamField query="sort" type="string" default="dateDesc">
+  Sort order. Possible values: `dateAsc`, `dateDesc`
+</ParamField>
+
+Plus all the formatting parameters from single game export.
+
+### Response
+
+Returns an ND-JSON stream where each line is a JSON object representing one game, or a stream of PGN games separated by double newlines.
+
+<ResponseExample>
+```json ND-JSON Stream
+{"id":"q7ZvsdUF","rated":true,"variant":"standard","speed":"blitz","perf":"blitz","createdAt":1709736600000,"lastMoveAt":1709736780000,"status":"mate","players":{"white":{"user":{"name":"player1","id":"player1"},"rating":2000,"ratingDiff":10},"black":{"user":{"name":"player2","id":"player2"},"rating":1980,"ratingDiff":-10}},"winner":"white","moves":"e4 e5 Nf3 Nc6 Bc4"}
+{"id":"iAnNeY0A","rated":true,"variant":"standard","speed":"rapid","perf":"rapid","createdAt":1709650200000,"lastMoveAt":1709651000000,"status":"resign","players":{"white":{"user":{"name":"player1","id":"player1"},"rating":1850,"ratingDiff":8},"black":{"user":{"name":"opponent","id":"opponent"},"rating":1870,"ratingDiff":-8}},"winner":"white","moves":"d4 d5 c4 e6"}
+```
+</ResponseExample>
+
+## Export imported games
+
+Download all PGN games previously imported by a user.
+
+<CodeGroup>
+```bash GET /api/games/export/imports
+curl "https://lichess.org/api/games/export/imports" \
+  -H "Authorization: Bearer <your_token>"
+```
+</CodeGroup>
+
+### Authentication
+
+Requires OAuth token with `game:read` scope.
+
+### Response
+
+Returns a stream of PGN games separated by triple newlines.
+
+## Export bookmarked games
+
+Download all games bookmarked by the authenticated user.
+
+<CodeGroup>
+```bash GET /api/games/export/bookmarks
+curl "https://lichess.org/api/games/export/bookmarks" \
+  -H "Authorization: Bearer <your_token>"
+```
+</CodeGroup>
+
+### Authentication
+
+Requires OAuth token with `game:read` scope.
+
+### Query Parameters
+
+<ParamField query="since" type="integer">
+  Download games bookmarked since this timestamp in milliseconds
+</ParamField>
+
+<ParamField query="until" type="integer">
+  Download games bookmarked until this timestamp in milliseconds
+</ParamField>
+
+<ParamField query="max" type="integer">
+  Maximum number of games to download (default 5000)
+</ParamField>
+
+<ParamField query="sort" type="string" default="dateDesc">
+  Sort order. Possible values: `dateAsc`, `dateDesc`
+</ParamField>
+
+Plus all the formatting parameters from single game export.
+
+### Response
+
+Returns an ND-JSON stream or PGN stream of bookmarked games.

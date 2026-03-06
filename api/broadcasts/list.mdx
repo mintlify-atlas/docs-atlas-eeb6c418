@@ -1,0 +1,472 @@
+---
+title: 'List Broadcasts'
+description: 'Get official broadcasts and search for broadcast tournaments'
+---
+
+## Get Official Broadcasts
+
+Retrieve the list of official ongoing and recent broadcast tournaments.
+
+<CodeGroup>
+```bash cURL
+curl -X GET 'https://lichess.org/api/broadcast' \
+  -H 'Accept: application/x-ndjson'
+```
+
+```javascript JavaScript
+fetch('https://lichess.org/api/broadcast', {
+  headers: {
+    'Accept': 'application/x-ndjson'
+  }
+})
+  .then(response => response.text())
+  .then(data => console.log(data));
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    'https://lichess.org/api/broadcast',
+    headers={'Accept': 'application/x-ndjson'}
+)
+print(response.text)
+```
+</CodeGroup>
+
+### Endpoint
+
+```
+GET https://lichess.org/api/broadcast
+```
+
+### Query Parameters
+
+<ParamField query="nb" type="integer" default="20">
+  Maximum number of broadcasts to return (max: 100)
+</ParamField>
+
+### Response
+
+Returns a stream of broadcast tournaments in NDJSON format. Each line contains a broadcast object.
+
+<ResponseField name="tour" type="object">
+  The broadcast tournament information
+  
+  <Expandable title="tour properties">
+    <ResponseField name="id" type="string">
+      The unique tournament identifier
+    </ResponseField>
+    
+    <ResponseField name="name" type="string">
+      The tournament name
+    </ResponseField>
+    
+    <ResponseField name="slug" type="string">
+      URL-friendly tournament identifier
+    </ResponseField>
+    
+    <ResponseField name="info" type="object">
+      Tournament metadata including format, time control, and players
+    </ResponseField>
+    
+    <ResponseField name="createdAt" type="integer">
+      Unix timestamp of creation
+    </ResponseField>
+    
+    <ResponseField name="url" type="string">
+      Full URL to the tournament
+    </ResponseField>
+    
+    <ResponseField name="tier" type="integer" optional>
+      Tournament tier (higher is more important)
+    </ResponseField>
+    
+    <ResponseField name="dates" type="array" optional>
+      Start and end dates as Unix timestamps
+    </ResponseField>
+    
+    <ResponseField name="image" type="string" optional>
+      URL to tournament image
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="round" type="object" optional>
+  The current or most recent round
+  
+  <Expandable title="round properties">
+    <ResponseField name="id" type="string">
+      The unique round identifier
+    </ResponseField>
+    
+    <ResponseField name="name" type="string">
+      The round name
+    </ResponseField>
+    
+    <ResponseField name="slug" type="string">
+      URL-friendly round identifier
+    </ResponseField>
+    
+    <ResponseField name="url" type="string">
+      Full URL to the round
+    </ResponseField>
+    
+    <ResponseField name="createdAt" type="integer">
+      Unix timestamp of creation
+    </ResponseField>
+    
+    <ResponseField name="ongoing" type="boolean" optional>
+      Whether the round is currently ongoing
+    </ResponseField>
+    
+    <ResponseField name="finished" type="boolean" optional>
+      Whether the round has finished
+    </ResponseField>
+    
+    <ResponseField name="startsAt" type="integer" optional>
+      Unix timestamp when the round starts/started
+    </ResponseField>
+    
+    <ResponseField name="finishedAt" type="integer" optional>
+      Unix timestamp when the round finished
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="group" type="object" optional>
+  Group information if the tournament belongs to a group
+  
+  <Expandable title="group properties">
+    <ResponseField name="id" type="string">
+      The unique group identifier
+    </ResponseField>
+    
+    <ResponseField name="name" type="string">
+      The group name
+    </ResponseField>
+    
+    <ResponseField name="tours" type="array">
+      Array of tournament previews in the group
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+---
+
+## Get Top Broadcasts
+
+Get paginated list of top broadcast tournaments.
+
+<CodeGroup>
+```bash cURL
+curl -X GET 'https://lichess.org/api/broadcast/top?page=1' \
+  -H 'Accept: application/json'
+```
+
+```javascript JavaScript
+fetch('https://lichess.org/api/broadcast/top?page=1', {
+  headers: {
+    'Accept': 'application/json'
+  }
+})
+  .then(response => response.json())
+  .then(data => console.log(data));
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    'https://lichess.org/api/broadcast/top',
+    params={'page': 1}
+)
+print(response.json())
+```
+</CodeGroup>
+
+### Endpoint
+
+```
+GET https://lichess.org/api/broadcast/top
+```
+
+### Query Parameters
+
+<ParamField query="page" type="integer" default="1">
+  Page number for pagination (max: 20)
+</ParamField>
+
+### Response
+
+<ResponseField name="active" type="array">
+  Array of currently active broadcasts, sorted by tier
+</ResponseField>
+
+<ResponseField name="past" type="object">
+  Paginated list of past broadcasts
+  
+  <Expandable title="past properties">
+    <ResponseField name="currentPage" type="integer">
+      Current page number
+    </ResponseField>
+    
+    <ResponseField name="maxPerPage" type="integer">
+      Maximum items per page
+    </ResponseField>
+    
+    <ResponseField name="currentPageResults" type="array">
+      Broadcast tournaments on the current page
+    </ResponseField>
+    
+    <ResponseField name="nbPages" type="integer">
+      Total number of pages
+    </ResponseField>
+    
+    <ResponseField name="previousPage" type="integer" optional>
+      Previous page number if available
+    </ResponseField>
+    
+    <ResponseField name="nextPage" type="integer" optional>
+      Next page number if available
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+---
+
+## Search Broadcasts
+
+Search for broadcast tournaments by query string.
+
+<CodeGroup>
+```bash cURL
+curl -X GET 'https://lichess.org/api/broadcast/search?q=chess&page=1' \
+  -H 'Accept: application/json'
+```
+
+```javascript JavaScript
+fetch('https://lichess.org/api/broadcast/search?q=chess&page=1', {
+  headers: {
+    'Accept': 'application/json'
+  }
+})
+  .then(response => response.json())
+  .then(data => console.log(data));
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    'https://lichess.org/api/broadcast/search',
+    params={'q': 'chess', 'page': 1}
+)
+print(response.json())
+```
+</CodeGroup>
+
+### Endpoint
+
+```
+GET https://lichess.org/api/broadcast/search
+```
+
+### Query Parameters
+
+<ParamField query="q" type="string" required>
+  Search query (max 100 characters)
+</ParamField>
+
+<ParamField query="page" type="integer" default="1">
+  Page number for pagination (max: 20)
+</ParamField>
+
+### Response
+
+Returns a paginated object with matching broadcasts (same structure as `/top` endpoint's `past` property).
+
+---
+
+## Get Broadcast by User
+
+Get broadcasts created by a specific user.
+
+<CodeGroup>
+```bash cURL
+curl -X GET 'https://lichess.org/api/broadcast/by/username?page=1' \
+  -H 'Accept: application/json'
+```
+
+```javascript JavaScript
+fetch('https://lichess.org/api/broadcast/by/username?page=1', {
+  headers: {
+    'Accept': 'application/json'
+  }
+})
+  .then(response => response.json())
+  .then(data => console.log(data));
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    'https://lichess.org/api/broadcast/by/username',
+    params={'page': 1}
+)
+print(response.json())
+```
+</CodeGroup>
+
+### Endpoint
+
+```
+GET https://lichess.org/api/broadcast/by/{username}
+```
+
+### Path Parameters
+
+<ParamField path="username" type="string" required>
+  Lichess username
+</ParamField>
+
+### Query Parameters
+
+<ParamField query="page" type="integer" default="1">
+  Page number for pagination (max: 20)
+</ParamField>
+
+### Response
+
+Returns a paginated object with broadcasts created by the specified user.
+
+---
+
+## Get Broadcast Tournament
+
+Get detailed information about a specific broadcast tournament, including all rounds.
+
+<CodeGroup>
+```bash cURL
+curl -X GET 'https://lichess.org/api/broadcast/{broadcastId}' \
+  -H 'Accept: application/json'
+```
+
+```javascript JavaScript
+fetch('https://lichess.org/api/broadcast/{broadcastId}', {
+  headers: {
+    'Accept': 'application/json'
+  }
+})
+  .then(response => response.json())
+  .then(data => console.log(data));
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    f'https://lichess.org/api/broadcast/{broadcast_id}'
+)
+print(response.json())
+```
+</CodeGroup>
+
+### Endpoint
+
+```
+GET https://lichess.org/api/broadcast/{broadcastId}
+```
+
+### Path Parameters
+
+<ParamField path="broadcastId" type="string" required>
+  The broadcast tournament ID (8 characters)
+</ParamField>
+
+### Query Parameters
+
+<ParamField query="html" type="boolean" default="false">
+  Return description as HTML instead of markdown
+</ParamField>
+
+### Response
+
+<ResponseField name="tour" type="object">
+  Complete tournament information including description and settings
+</ResponseField>
+
+<ResponseField name="rounds" type="array">
+  Array of all rounds in the tournament with full details
+</ResponseField>
+
+<ResponseField name="group" type="object" optional>
+  Group information if applicable
+</ResponseField>
+
+<ResponseField name="photos" type="object" optional>
+  Player photos keyed by player name
+</ResponseField>
+
+<ResponseField name="defaultRoundId" type="string" optional>
+  ID of the default round to display
+</ResponseField>
+
+### Authentication
+
+- **Public broadcasts**: No authentication required
+- **Private broadcasts**: Requires OAuth token with `study:read` scope
+
+<Note>
+  Private broadcasts will return a 401 error if accessed without proper authentication.
+</Note>
+
+---
+
+## Export Tournament PGN
+
+Download all games from a broadcast tournament as PGN.
+
+<CodeGroup>
+```bash cURL
+curl -X GET 'https://lichess.org/api/broadcast/{broadcastId}.pgn' \
+  --output tournament.pgn
+```
+
+```javascript JavaScript
+fetch('https://lichess.org/api/broadcast/{broadcastId}.pgn')
+  .then(response => response.text())
+  .then(pgn => console.log(pgn));
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    f'https://lichess.org/api/broadcast/{broadcast_id}.pgn'
+)
+with open('tournament.pgn', 'w') as f:
+    f.write(response.text)
+```
+</CodeGroup>
+
+### Endpoint
+
+```
+GET https://lichess.org/api/broadcast/{broadcastId}.pgn
+```
+
+### Path Parameters
+
+<ParamField path="broadcastId" type="string" required>
+  The broadcast tournament ID (8 characters)
+</ParamField>
+
+### Response
+
+Returns PGN data for all games in the tournament as `application/x-chess-pgn`.
+
+<Note>
+  Rate limits apply. The download is streamed to handle large tournaments efficiently.
+</Note>

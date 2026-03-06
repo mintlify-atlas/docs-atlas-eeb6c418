@@ -1,97 +1,148 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "Lichess Documentation"
+description: "Free, open-source chess server with real-time gameplay, puzzles, tournaments, and comprehensive API"
 ---
 
-## Setting up
+<div style={{
+  background: 'linear-gradient(135deg, #1a1713 0%, #2a2520 100%)',
+  borderRadius: '6px',
+  border: '1px solid rgba(255, 165, 0, 0.8)',
+  padding: '3rem 2rem',
+  marginBottom: '2rem',
+  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+}}>
+  <h1 style={{
+    fontFamily: 'Inter, sans-serif',
+    fontWeight: 700,
+    fontSize: '3rem',
+    color: '#d7d7d7',
+    marginBottom: '1rem',
+    textAlign: 'center'
+  }}>♞ Lichess ♞</h1>
+  <p style={{
+    fontFamily: 'Inter, sans-serif',
+    fontSize: '1.25rem',
+    color: '#d7d7d7',
+    textAlign: 'center',
+    marginBottom: '2rem'
+  }}>
+    The forever free, ad-free, and open-source chess server
+  </p>
+  <div style={{
+    display: 'flex',
+    gap: '1rem',
+    justifyContent: 'center',
+    flexWrap: 'wrap'
+  }}>
+    <a href="/quickstart" style={{
+      background: 'transparent',
+      color: '#3a8ee6',
+      padding: '0.75rem 1.5rem',
+      borderRadius: '4px',
+      border: '1px solid #3a8ee6',
+      textDecoration: 'none',
+      fontFamily: 'Inter, sans-serif',
+      fontWeight: 600,
+      fontSize: '1rem',
+      transition: 'all 0.2s'
+    }}>Get Started →</a>
+    <a href="/api/overview" style={{
+      background: '#3a3a3a',
+      color: '#b0b0b0',
+      padding: '0.75rem 1.5rem',
+      borderRadius: '4px',
+      textDecoration: 'none',
+      fontFamily: 'Inter, sans-serif',
+      fontWeight: 600,
+      fontSize: '1rem',
+      transition: 'all 0.2s'
+    }}>API Reference</a>
+  </div>
+</div>
 
-Get your documentation site up and running in minutes.
+## What is Lichess?
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
+Lichess is a free, open-source online chess platform that has served millions of chess players worldwide since 2010. Built with Scala 3 and TypeScript, it offers real-time multiplayer gameplay, tactical puzzles, tournaments, computer analysis, and a comprehensive HTTP API—all without ads or paywalls.
 
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Real-time Games" icon="chess" href="/features/games">
+    Play chess with millions of players worldwide with WebSocket-powered real-time gameplay
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Puzzles & Training" icon="brain" href="/features/puzzles">
+    Improve your tactics with over 3 million chess puzzles and performance tracking
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Tournaments" icon="trophy" href="/features/tournaments">
+    Join Arena, Swiss, and team battle tournaments with flexible scheduling
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Computer Analysis" icon="microchip" href="/features/analysis">
+    Analyze games with Stockfish powered by a distributed Fishnet cluster
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## Quick Links
 
-Everything you need to create world-class documentation.
+<CardGroup cols={3}>
+  <Card title="Getting Started" icon="rocket" href="/quickstart">
+    Set up your development environment in minutes
+  </Card>
+  <Card title="Architecture" icon="sitemap" href="/architecture">
+    Understand the system design and components
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/overview">
+    Explore the comprehensive HTTP API
+  </Card>
+  <Card title="Development Setup" icon="laptop-code" href="/development/setup">
+    Configure your local development environment
+  </Card>
+  <Card title="Contributing" icon="users" href="/contributing/overview">
+    Learn how to contribute to Lichess
+  </Card>
+  <Card title="Bot API" icon="robot" href="/api/bot/account">
+    Build chess bots and automated players
+  </Card>
+</CardGroup>
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+## Key Features
 
-## Need inspiration?
+<AccordionGroup>
+  <Accordion title="Real-time Multiplayer Chess">
+    Play correspondence, rapid, blitz, or bullet chess with players worldwide. WebSocket-powered gameplay ensures instant move delivery and smooth user experience.
+  </Accordion>
+  <Accordion title="Chess Puzzles">
+    Train with over 3 million tactical puzzles. Track your puzzle rating, review your performance, and practice specific themes or openings.
+  </Accordion>
+  <Accordion title="Tournament System">
+    Create and join Arena tournaments, Swiss tournaments, and team battles. Support for multiple time controls, rating restrictions, and custom conditions.
+  </Accordion>
+  <Accordion title="Studies & Broadcasts">
+    Collaborate on chess analysis with interactive studies. Follow live broadcasts of major chess events with real-time game updates.
+  </Accordion>
+  <Accordion title="Computer Analysis">
+    Get Stockfish analysis for your games via the distributed Fishnet cluster. Cloud-based analysis available for all users.
+  </Accordion>
+  <Accordion title="HTTP API">
+    Access games, user profiles, tournaments, puzzles, and more via comprehensive REST API. Support for streaming endpoints and bot integration.
+  </Accordion>
+  <Accordion title="Multi-language Support">
+    Available in over 140 languages thanks to community translations via Crowdin.
+  </Accordion>
+  <Accordion title="Open Source">
+    Licensed under AGPL-3.0. All code is publicly available and contributions are welcome.
+  </Accordion>
+</AccordionGroup>
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+## Technology Stack
+
+Lichess uses a modern, scalable tech stack:
+
+- **Backend**: Scala 3 with Play Framework 2.8
+- **Frontend**: TypeScript with Snabbdom
+- **Database**: MongoDB (4.7+ billion games)
+- **Search**: Elasticsearch
+- **Cache & Messaging**: Redis
+- **WebSockets**: Separate WebSocket server (lila-ws)
+- **Analysis**: Stockfish via Fishnet cluster
+
+<Note>
+  Lichess is a non-profit, open-source project maintained by a team of volunteers and funded by user donations. All features are free and will remain free forever.
+</Note>

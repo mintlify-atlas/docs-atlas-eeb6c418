@@ -1,0 +1,496 @@
+---
+title: "Stream Incoming Events"
+api: "GET /api/stream/event"
+description: "Stream personal events including game starts, game finishes, and challenge notifications"
+---
+
+## Overview
+
+Stream events for the authenticated user in real-time. This endpoint pushes notifications for:
+
+- Games starting
+- Games finishing
+- Incoming challenges
+- Challenge cancellations and declinations
+- Rematch offers
+
+This is the primary endpoint for bot accounts and board API applications to receive real-time notifications about their account activity.
+
+## Endpoint
+
+```bash
+GET https://lichess.org/api/stream/event
+```
+
+## Authentication
+
+**Required.** You must authenticate with an OAuth2 token that has one of the following scopes:
+
+- `bot:play` - For bot accounts
+- `board:play` - For board/external applications
+- `challenge:read` - For reading challenges only
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for authentication
+  
+  ```
+  Authorization: Bearer lip_yourtokenhere
+  ```
+</ParamField>
+
+## Response Format
+
+The stream returns newline-delimited JSON (NDJSON). Each line is a complete JSON object representing an event.
+
+Keep-alive messages (empty lines or objects with no `type` field) are sent periodically to prevent connection timeouts.
+
+## Example Requests
+
+```bash cURL
+curl https://lichess.org/api/stream/event \
+  -H "Authorization: Bearer lip_yourtokenhere"
+```
+
+```javascript JavaScript
+const token = 'lip_yourtokenhere';
+const url = 'https://lichess.org/api/stream/event';
+
+const response = await fetch(url, {
+  headers: {
+    'Authorization': `Bearer ${token}`
+  }
+});
+
+const reader = response.body.getReader();
+const decoder = new TextDecoder();
+
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+  
+  const lines = decoder.decode(value).split('\n');
+  for (const line of lines) {
+    if (line.trim()) {
+      const event = JSON.parse(line);
+      console.log('Event:', event);
+    }
+  }
+}
+```
+
+```python Python
+import requests
+import json
+
+token = 'lip_yourtokenhere'
+url = 'https://lichess.org/api/stream/event'
+
+headers = {'Authorization': f'Bearer {token}'}
+
+with requests.get(url, headers=headers, stream=True) as response:
+    for line in response.iter_lines():
+        if line:
+            event = json.loads(line)
+            if 'type' in event:
+                print(f"{event['type']} event:", event)
+```
+
+```python Python - python-chess Library
+import berserk
+
+session = berserk.TokenSession('lip_yourtokenhere')
+client = berserk.Client(session)
+
+for event in client.board.stream_incoming_events():
+    if event['type'] == 'gameStart':
+        game_id = event['game']['gameId']
+        print(f"Game started: {game_id}")
+    elif event['type'] == 'challenge':
+        challenge_id = event['challenge']['id']
+        print(f"Challenge received: {challenge_id}")
+```
+
+## Event Types
+
+### Game Start Event
+
+Sent when a game starts involving the authenticated user:
+
+```json
+{
+  "type": "gameStart",
+  "game": {
+    "gameId": "5IrD6Gzz",
+    "fullId": "5IrD6Gzz5IrD",
+    "color": "white",
+    "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+    "hasMoved": false,
+    "isMyTurn": true,
+    "lastMove": "",
+    "opponent": {
+      "id": "opponent_username",
+      "username": "OpponentName",
+      "rating": 1500
+    },
+    "perf": "blitz",
+    "rated": true,
+    "secondsLeft": 300,
+    "source": "lobby",
+    "status": {
+      "id": 20,
+      "name": "started"
+    },
+    "variant": {
+      "key": "standard",
+      "name": "Standard"
+    },
+    "speed": "blitz",
+    "id": "5IrD6Gzz",
+    "compat": {
+      "bot": true,
+      "board": true
+    }
+  }
+}
+```
+
+### Game Finish Event
+
+Sent when a game involving the authenticated user finishes:
+
+```json
+{
+  "type": "gameFinish",
+  "game": {
+    "gameId": "5IrD6Gzz",
+    "fullId": "5IrD6Gzz5IrD",
+    "color": "white",
+    "fen": "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+    "hasMoved": true,
+    "isMyTurn": false,
+    "lastMove": "f6e4",
+    "opponent": {
+      "id": "opponent_username",
+      "username": "OpponentName",
+      "rating": 1500
+    },
+    "perf": "blitz",
+    "rated": true,
+    "source": "lobby",
+    "status": {
+      "id": 30,
+      "name": "mate"
+    },
+    "variant": {
+      "key": "standard",
+      "name": "Standard"
+    },
+    "speed": "blitz",
+    "winner": "black",
+    "id": "5IrD6Gzz",
+    "compat": {
+      "bot": true,
+      "board": true
+    }
+  }
+}
+```
+
+### Challenge Event
+
+Sent when someone challenges the authenticated user:
+
+```json
+{
+  "type": "challenge",
+  "challenge": {
+    "id": "pClLeFUy",
+    "url": "https://lichess.org/pClLeFUy",
+    "status": "created",
+    "challenger": {
+      "id": "challenger_id",
+      "name": "ChallengerName",
+      "title": "GM",
+      "rating": 2500,
+      "provisional": false,
+      "online": true
+    },
+    "destUser": {
+      "id": "your_user_id",
+      "name": "YourName",
+      "title": "IM",
+      "rating": 2400,
+      "provisional": false,
+      "online": true
+    },
+    "variant": {
+      "key": "standard",
+      "name": "Standard",
+      "short": "Std"
+    },
+    "rated": true,
+    "speed": "blitz",
+    "timeControl": {
+      "type": "clock",
+      "limit": 300,
+      "increment": 3,
+      "show": "5+3"
+    },
+    "color": "random",
+    "perf": {
+      "icon": ")",
+      "name": "Blitz"
+    }
+  },
+  "compat": {
+    "bot": true,
+    "board": true
+  }
+}
+```
+
+### Challenge Declined Event
+
+Sent when a challenge you created is declined:
+
+```json
+{
+  "type": "challengeDeclined",
+  "challenge": {
+    "id": "pClLeFUy",
+    "url": "https://lichess.org/pClLeFUy",
+    "status": "declined",
+    "challenger": {
+      "id": "your_user_id",
+      "name": "YourName"
+    },
+    "destUser": {
+      "id": "opponent_id",
+      "name": "OpponentName"
+    },
+    "variant": {
+      "key": "standard",
+      "name": "Standard"
+    },
+    "rated": true,
+    "speed": "blitz",
+    "timeControl": {
+      "type": "clock",
+      "limit": 300,
+      "increment": 3,
+      "show": "5+3"
+    },
+    "declineReason": "generic"
+  }
+}
+```
+
+### Challenge Canceled Event
+
+Sent when a challenge is canceled:
+
+```json
+{
+  "type": "challengeCanceled",
+  "challenge": {
+    "id": "pClLeFUy",
+    "url": "https://lichess.org/pClLeFUy",
+    "status": "canceled",
+    "challenger": {
+      "id": "challenger_id",
+      "name": "ChallengerName"
+    },
+    "destUser": {
+      "id": "your_user_id",
+      "name": "YourName"
+    },
+    "variant": {
+      "key": "standard",
+      "name": "Standard"
+    }
+  }
+}
+```
+
+## Response Fields
+
+<ResponseField name="type" type="string">
+  Event type: `gameStart`, `gameFinish`, `challenge`, `challengeDeclined`, `challengeCanceled`
+</ResponseField>
+
+<ResponseField name="game" type="object">
+  Game object (for `gameStart` and `gameFinish` events)
+  
+  <Expandable title="Game Fields">
+    <ResponseField name="gameId" type="string">
+      Game ID (8 characters)
+    </ResponseField>
+    
+    <ResponseField name="fullId" type="string">
+      Full game ID including player token (12 characters)
+    </ResponseField>
+    
+    <ResponseField name="color" type="string">
+      Your color in the game ("white" or "black")
+    </ResponseField>
+    
+    <ResponseField name="fen" type="string">
+      Current position in FEN notation
+    </ResponseField>
+    
+    <ResponseField name="hasMoved" type="boolean">
+      Whether any moves have been played
+    </ResponseField>
+    
+    <ResponseField name="isMyTurn" type="boolean">
+      Whether it's your turn to move
+    </ResponseField>
+    
+    <ResponseField name="lastMove" type="string">
+      Last move in UCI notation (e.g., "e2e4")
+    </ResponseField>
+    
+    <ResponseField name="opponent" type="object">
+      Opponent information including id, username, and rating
+    </ResponseField>
+    
+    <ResponseField name="perf" type="string">
+      Performance category ("bullet", "blitz", "rapid", etc.)
+    </ResponseField>
+    
+    <ResponseField name="rated" type="boolean">
+      Whether the game is rated
+    </ResponseField>
+    
+    <ResponseField name="speed" type="string">
+      Game speed category
+    </ResponseField>
+    
+    <ResponseField name="variant" type="object">
+      Chess variant information
+    </ResponseField>
+    
+    <ResponseField name="status" type="object">
+      Game status with id and name
+    </ResponseField>
+    
+    <ResponseField name="winner" type="string" optional>
+      Winner color ("white" or "black") - only in gameFinish events
+    </ResponseField>
+    
+    <ResponseField name="source" type="string">
+      How the game was created ("lobby", "friend", "ai", etc.)
+    </ResponseField>
+    
+    <ResponseField name="compat" type="object">
+      Compatibility flags for bot and board API
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="challenge" type="object">
+  Challenge object (for challenge-related events)
+  
+  <Expandable title="Challenge Fields">
+    <ResponseField name="id" type="string">
+      Challenge ID
+    </ResponseField>
+    
+    <ResponseField name="url" type="string">
+      URL to view/accept the challenge
+    </ResponseField>
+    
+    <ResponseField name="status" type="string">
+      Challenge status: "created", "declined", "canceled", "accepted"
+    </ResponseField>
+    
+    <ResponseField name="challenger" type="object">
+      User who created the challenge
+    </ResponseField>
+    
+    <ResponseField name="destUser" type="object">
+      User who was challenged
+    </ResponseField>
+    
+    <ResponseField name="variant" type="object">
+      Chess variant for the challenge
+    </ResponseField>
+    
+    <ResponseField name="rated" type="boolean">
+      Whether the game will be rated
+    </ResponseField>
+    
+    <ResponseField name="speed" type="string">
+      Game speed category
+    </ResponseField>
+    
+    <ResponseField name="timeControl" type="object">
+      Time control settings (clock, correspondence, or unlimited)
+    </ResponseField>
+    
+    <ResponseField name="color" type="string">
+      Color preference: "white", "black", or "random"
+    </ResponseField>
+    
+    <ResponseField name="perf" type="object">
+      Performance category information
+    </ResponseField>
+    
+    <ResponseField name="declineReason" type="string" optional>
+      Reason for decline (only in challengeDeclined events)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Connection Management
+
+- **Keep-alive**: The stream sends periodic keep-alive messages (empty objects or newlines) every 7 seconds to prevent timeout
+- **User presence**: Maintaining an active connection marks the user as online
+- **Single connection**: Only one active event stream is recommended per token. New connections with the same bearer token will terminate previous ones
+- **Reconnection**: If disconnected, implement exponential backoff for reconnection attempts
+
+## Rate Limiting
+
+- Event streams are rate-limited per bearer token
+- Do not poll this endpoint - it's designed as a persistent stream
+- Excessive connection attempts will result in temporary blocking
+- Maximum concurrent connections are limited per account
+
+## Important Notes
+
+<Warning>
+  **Do not poll this endpoint.** This endpoint is designed to be held open as a persistent streaming connection. Repeatedly connecting and disconnecting will result in rate limiting.
+</Warning>
+
+- The stream includes both games you initiated and games started through matchmaking
+- When receiving a `gameStart` event, you should immediately connect to the game stream using the game ID
+- The `fullId` field contains the authentication token needed for making moves
+- Challenge events include a `compat` field indicating if the challenge is compatible with bot/board APIs
+- Games with `"compat": {"bot": false}` cannot be played via the Bot API (e.g., casual games for verified bots)
+
+## Typical Workflow
+
+1. **Connect** to the event stream on application startup
+2. **Receive gameStart** event with game details
+3. **Connect to game stream** using `/api/board/game/stream/{gameId}` to play moves
+4. **Handle challenges** by accepting or declining via challenge endpoints
+5. **Maintain connection** indefinitely, reconnecting on disconnection
+
+## Error Handling
+
+- **401 Unauthorized**: Invalid or expired token - refresh your OAuth token
+- **429 Too Many Requests**: Rate limited - implement backoff before reconnecting
+- **Connection drops**: Implement automatic reconnection with exponential backoff
+
+## Related Endpoints
+
+- [Stream Game State](/api/bot/playing) - Stream moves and state for a specific game
+- [Accept Challenge](/api/bot/challenge) - Accept incoming challenges
+- [Get Current TV Channels](/api/tv/channels) - Get current TV games
+- [Stream TV Feed](/api/tv/feed) - Stream public TV games
+
+## Source Code Reference
+
+- Controller: `app/controllers/Api.scala:292-303` (eventStream method)
+- Event Stream Implementation: `modules/api/src/main/EventStream.scala`
+- Routes: `conf/routes:767` (GET /api/stream/event)

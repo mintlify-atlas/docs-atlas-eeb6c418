@@ -1,0 +1,486 @@
+---
+title: 'Analysis'
+description: 'Analyze chess games with Stockfish engine, explore openings, and improve your chess understanding'
+---
+
+## Overview
+
+Lichess provides powerful, free game analysis tools that rival expensive commercial software. Using Stockfish (the strongest open-source chess engine), you can deeply analyze any game, explore openings, find improvements, and understand your mistakes.
+
+<Note>
+  All analysis features on Lichess are completely free and unlimited - no subscription required.
+</Note>
+
+## Analysis Board
+
+The analysis board is your primary tool for chess study:
+
+### Accessing Analysis
+
+<CardGroup cols={2}>
+  <Card title="From Your Games" icon="chess">
+    Click "Analysis" button on any completed game
+  </Card>
+  
+  <Card title="Import PGN" icon="file-import">
+    Paste PGN notation of any game
+  </Card>
+  
+  <Card title="Import FEN" icon="chess-board">
+    Start from any position using FEN
+  </Card>
+  
+  <Card title="Empty Board" icon="square">
+    Begin from scratch or standard starting position
+  </Card>
+</CardGroup>
+
+### Analysis Interface
+
+**Main Components:**
+
+- **Interactive board**: Make moves, add variations, explore lines
+- **Move list**: Complete game notation with annotations
+- **Engine panel**: Computer evaluation and recommended moves
+- **Evaluation graph**: Visual representation of position assessment
+- **Opening explorer**: Statistics from opening database
+- **Tablebase**: Perfect endgame play (7 pieces or fewer)
+
+## Computer Analysis
+
+### Requesting Analysis
+
+<Steps>
+  <Step title="Open Game">
+    Navigate to any game on Lichess
+  </Step>
+  
+  <Step title="Request Analysis">
+    Click "Request computer analysis" button
+  </Step>
+  
+  <Step title="Wait for Processing">
+    Server analyzes with Stockfish (typically 30-90 seconds)
+  </Step>
+  
+  <Step title="View Results">
+    Analysis appears with evaluations, classifications, and suggestions
+  </Step>
+</Steps>
+
+### What Analysis Provides
+
+<Accordion title="Move Classifications">
+  Every move is automatically classified:
+  - **Brilliant** `!!` - Exceptional, hard-to-find move
+  - **Great** `!` - Strong move, often the best
+  - **Best move** - Engine's top choice
+  - **Good** - Reasonable move maintaining position
+  - **Inaccuracy** `?!` - Suboptimal but not critical
+  - **Mistake** `?` - Significant error losing advantage
+  - **Blunder** `??` - Major mistake, likely game-losing
+</Accordion>
+
+<Accordion title="Accuracy Percentage">
+  Overall game performance metric:
+  - Based on how closely your moves matched engine recommendations
+  - Weighted by position difficulty
+  - Calculated separately for each player
+  - 90%+ = Excellent, 80-90% = Good, 70-80% = Average, below 70% = Poor
+  - Useful for tracking improvement over time
+</Accordion>
+
+<Accordion title="Average Centipawn Loss">
+  Statistical measure of accuracy:
+  - Average evaluation loss per move
+  - Lower is better (0 = perfect play)
+  - ACPL < 10 = Very strong
+  - ACPL 10-20 = Strong
+  - ACPL 20-40 = Average
+  - ACPL > 40 = Weak
+</Accordion>
+
+### Analysis Graph
+
+Visual position evaluation:
+
+- **Vertical axis**: Position evaluation (-10 to +10, or mate)
+- **Horizontal axis**: Move number
+- **White advantage**: Positive (above 0)
+- **Black advantage**: Negative (below 0)
+- **Sharp changes**: Indicate mistakes or brilliant moves
+- **Click on graph**: Jump to that position
+
+<Note>
+  The evaluation graph makes it easy to spot critical moments and turning points in your games.
+</Note>
+
+## Interactive Analysis
+
+### Making Moves
+
+Explore positions freely:
+
+- **Click and drag** or **click twice** to make moves
+- **Arrow keys**: Navigate move list (← → ↑ ↓)
+- **Mouse wheel**: Scroll through moves
+- **Click on move**: Jump to that position
+- **Home/End keys**: Jump to start/end of game
+
+### Adding Variations
+
+Explore alternative lines:
+
+<Steps>
+  <Step title="Navigate to Position">
+    Go to the move where you want to add variation
+  </Step>
+  
+  <Step title="Make Alternative Move">
+    Play a different move than what was in the game
+  </Step>
+  
+  <Step title="Continue Line">
+    Play out the variation as far as you want
+  </Step>
+  
+  <Step title="Return to Mainline">
+    Click on main game move to return
+  </Step>
+</Steps>
+
+### Deleting Variations
+
+- **Right-click on move**: Context menu with "Delete" option
+- **Delete key**: Remove highlighted variation
+- **Clear variations**: Remove all variations at once
+
+### Promoting Variations
+
+- **Right-click move** → "Promote variation": Make it the mainline
+- Useful when you discover a better continuation
+
+## Computer Engine
+
+### Local Engine (Client-side)
+
+Runs in your browser:
+
+- **Stockfish** - World's strongest open-source engine
+- **Multi-PV**: Shows multiple top moves simultaneously
+- **Depth**: How deep engine calculates (adjustable)
+- **Nodes**: Positions evaluated
+- **Speed**: Nodes per second (depends on your device)
+
+### Engine Options
+
+- **Number of lines**: Show 1-5 top moves
+- **Analysis depth**: How deeply to analyze (depth 20-30 typical)
+- **Hash size**: Memory allocation for analysis
+- **Threads**: CPU cores to use
+
+### Understanding Evaluations
+
+**Evaluation Format:**
+
+- **+1.5**: White is better by 1.5 pawns
+- **-0.8**: Black is better by 0.8 pawns
+- **0.0**: Equal position
+- **M5**: Mate in 5 moves for the side to move
+- **-M3**: Opponent has mate in 3 moves
+
+**General Guidelines:**
+- **0.0 to ±0.2**: Dead equal
+- **±0.2 to ±0.5**: Slight edge
+- **±0.5 to ±1.5**: Clear advantage
+- **±1.5 to ±3.0**: Significant advantage
+- **±3.0+**: Winning advantage
+
+<Note>
+  Position evaluation is just one factor. Practical play, time, and position complexity also matter.
+</Note>
+
+## Opening Explorer
+
+Explore opening databases:
+
+### Database Options
+
+<Accordion title="Lichess Database">
+  Millions of games from Lichess:
+  - Filter by rating range (1600+, 2000+, 2200+, 2500+)
+  - Filter by time control (Bullet, Blitz, Rapid, Classical)
+  - Shows move popularity and results
+  - Updated regularly with new games
+  - Most comprehensive database for online chess
+</Accordion>
+
+<Accordion title="Masters Database">
+  High-level OTB games:
+  - Games from players rated 2200+ FIDE
+  - Historical games back to 1952
+  - Includes classical World Championship games
+  - Ideal for learning "proper" openings
+  - About 2.6 million games
+</Accordion>
+
+<Accordion title="Player Database">
+  Specific player's games:
+  - Search any Lichess player
+  - See their opening repertoire
+  - Prepare against specific opponents
+  - Study your own openings
+  - Identify patterns and weaknesses
+</Accordion>
+
+### Explorer Information
+
+For each move, see:
+
+- **Frequency**: How often it's played
+- **Results**: Win/Draw/Loss statistics
+- **Average rating**: Typical player strength
+- **Example games**: Click to see full games
+- **Move graph**: Visual comparison of popularity
+
+### Explorer Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Learn Openings" icon="book">
+    Discover main lines and popular variations
+  </Card>
+  
+  <Card title="Check Novelties" icon="lightbulb">
+    See if your ideas have been played before
+  </Card>
+  
+  <Card title="Prepare Against Opponent" icon="crosshairs">
+    Study opponent's opening repertoire
+  </Card>
+  
+  <Card title="Find Sidelines" icon="code-branch">
+    Discover interesting but less common moves
+  </Card>
+</CardGroup>
+
+## Tablebase
+
+### Endgame Perfection
+
+Access perfect endgame play:
+
+- **7-piece tablebase**: All positions with ≤7 pieces
+- **DTZ (Distance to Zero)**: Moves to capture/pawn move
+- **Optimal play**: Computer-perfect moves
+- **Win/Draw/Loss**: Objective evaluation with perfect play
+- **Longest win**: Learn forced winning techniques
+
+### Using Tablebase
+
+1. Reduce to 7 or fewer pieces
+2. Tablebase activates automatically
+3. Shows "Win in X moves" or "Draw with best play"
+4. Follow optimal moves for guaranteed results
+
+<Note>
+  Tablebase is invaluable for learning theoretical endgames like K+R+B vs K+R or K+Q vs K+R.
+</Note>
+
+## Analysis Tools
+
+### Editor Mode
+
+Modify positions:
+
+- **Add/remove pieces**: Build custom positions
+- **Change turn**: Who moves first
+- **Set castling rights**: Configure legal castling
+- **En passant**: Set up en passant squares
+- **Generate FEN**: Export position notation
+
+### Flip Board
+
+View from either perspective:
+- Click flip icon to reverse orientation
+- Useful for seeing opponent's view
+
+### Practice Against Computer
+
+Test your understanding:
+
+1. Analyze position
+2. Click "Practice with computer"
+3. Play position against Stockfish
+4. See if you can convert advantage
+
+### Share Analysis
+
+Share your work:
+
+- **URL updates automatically**: Share current position
+- **GIF export**: Create animated game/position GIFs
+- **PGN download**: Export with annotations
+- **FEN copy**: Share specific position
+- **Embed**: Integrate on external websites
+
+## Annotations
+
+### Adding Comments
+
+Annotate positions:
+
+<Steps>
+  <Step title="Navigate to Position">
+    Click on move or position to annotate
+  </Step>
+  
+  <Step title="Click Comment Icon">
+    Or press 'c' key
+  </Step>
+  
+  <Step title="Write Analysis">
+    Explain plans, ideas, or key moments
+  </Step>
+  
+  <Step title="Save">
+    Comments appear below move list
+  </Step>
+</Steps>
+
+### Glyphs and Symbols
+
+Add standard chess annotations:
+
+- `!` Good move
+- `!!` Brilliant
+- `?` Mistake  
+- `??` Blunder
+- `!?` Interesting
+- `?!` Dubious
+- `±` White is better
+- `∓` Black is better
+- `=` Equal
+
+### Visual Annotations
+
+Highlight squares and draw arrows:
+
+- **Right-click + drag**: Draw arrow
+- **Right-click square**: Circle square
+- **Color meanings**:
+  - Green: Good move/square
+  - Red: Bad move/square
+  - Blue: Alternative
+  - Yellow: Key square/attention
+
+## Analysis Features for Your Games
+
+### Learn from Mistakes
+
+After requesting analysis:
+
+1. **Review mistakes**: Click on `?` and `??` moves
+2. **See best move**: Engine shows what you should have played
+3. **Understand why**: Check evaluation change
+4. **Practice position**: Play it against computer to improve
+
+### Track Improvement
+
+Monitor your progress:
+
+- Average accuracy over time
+- Common mistake patterns
+- Opening phase performance
+- Endgame technique
+- Time management (from move times)
+
+### Identify Patterns
+
+Find recurring issues:
+
+- Missing tactics
+- Time trouble mistakes  
+- Opening preparation gaps
+- Endgame weaknesses
+- Calculation errors
+
+## Analysing Analysable Games
+
+Not all games can be analyzed:
+
+**Analysable games:**
+- At least 5 plies (moves) played
+- Standard chess or certain variants
+- Not old Horde games (before April 2015)
+
+**Variants with analysis support:**
+- Standard, Chess960, Crazyhouse, King of the Hill
+- Three-check, Antichess, Atomic, Horde, Racing Kings
+
+**No analysis:**
+- Very short games (< 5 moves)
+- Some exotic variants
+- Correspondence games still in progress
+
+## Cloud Analysis
+
+Community-powered deep analysis:
+
+- Deeper than standard server analysis
+- Contributed by users running analysis
+- Cached and shared for all users
+- Shows when available on analysis page
+
+## External Engine Support
+
+Use your own engines:
+
+- Configure external UCI engines
+- Connect local Stockfish or other engines
+- More control over analysis parameters
+- Useful for advanced users
+
+<Note>
+  External engines require browser extensions and technical setup. Built-in analysis is sufficient for most users.
+</Note>
+
+## Analysis Tips
+
+<Steps>
+  <Step title="Focus on Mistakes">
+    Review all `?` and `??` moves carefully
+  </Step>
+  
+  <Step title="Understand Why">
+    Don't just see the best move - understand the reasoning
+  </Step>
+  
+  <Step title="Check Key Moments">
+    Graph spikes indicate critical positions
+  </Step>
+  
+  <Step title="Compare with Database">
+    Use opening explorer in early game
+  </Step>
+  
+  <Step title="Practice Problem Positions">
+    Play critical positions against computer
+  </Step>
+</Steps>
+
+## Related Features
+
+<CardGroup cols={2}>
+  <Card title="Studies" href="/features/studies">
+    Save analysis in studies with detailed annotations
+  </Card>
+  <Card title="Games" href="/features/games">
+    All your games can be analyzed
+  </Card>
+  <Card title="Puzzles" href="/features/puzzles">
+    Puzzles generated from analyzed games
+  </Card>
+  <Card title="Broadcasts" href="/features/broadcasts">
+    Top-level games include live analysis
+  </Card>
+</CardGroup>

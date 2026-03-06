@@ -1,0 +1,536 @@
+---
+title: Testing
+description: Running tests for backend and frontend code
+---
+
+## Overview
+
+Lichess has comprehensive test coverage for both backend and frontend:
+
+- **Backend tests**: Scala tests using munit and scalacheck
+- **Frontend tests**: TypeScript tests using Node.js test runner
+
+## Backend Testing
+
+### Test Framework
+
+Lichess uses **munit** as the primary testing framework:
+
+```scala
+import munit.FunSuite
+
+class GameTest extends FunSuite:
+  test("game creation"):
+    val game = Game.make(...)
+    assert(game.turns == 0)
+```
+
+### Property-Based Testing
+
+**scalacheck** is used for property-based testing:
+
+```scala
+import org.scalacheck.Prop.*
+
+test("rating always increases after win"):
+  forAll { (rating: Int) =>
+    val newRating = Glicko.calculate(rating, win = true)
+    newRating > rating
+  }
+```
+
+### Running Tests
+
+#### All Tests
+
+Run all tests in the project:
+
+```bash
+./lila.sh
+test
+```
+
+#### Module Tests
+
+Test specific modules:
+
+```scala
+// In sbt console
+game/test
+user/test
+rating/test
+```
+
+#### Specific Test Class
+
+Run a single test class:
+
+```scala
+testOnly lila.game.GameTest
+testOnly lila.rating.GlickoTest
+```
+
+#### Pattern Matching
+
+Run tests matching a pattern:
+
+```scala
+testOnly *Game*
+testOnly *Glicko*
+```
+
+#### Single Test
+
+Run a specific test within a class:
+
+```scala
+testOnly lila.game.GameTest -- *creation*
+```
+
+### Test Organization
+
+Tests are located in each module's test directory:
+
+```
+modules/game/
+├── src/
+│   ├── main/
+│   └── test/
+│       ├── GameTest.scala
+│       ├── PgnTest.scala
+│       └── ...
+```
+
+### Test Dependencies
+
+Test utilities are available via the `tests.bundle`:
+
+```scala
+lazy val game = module("game",
+  Seq(tree, rating, memo),
+  Seq(compression) ++ tests.bundle
+)
+```
+
+Includes:
+- munit
+- scalacheck
+- munitCheck (integration)
+- chess.testKit
+
+### Test-Only Dependencies
+
+Access test utilities from other modules:
+
+```scala
+.dependsOn(common % "test->test")
+```
+
+This allows using test helpers from the `common` module.
+
+### Writing Tests
+
+<Steps>
+
+### Create Test File
+
+Create a test file in `modules/[module]/src/test/`:
+
+```scala
+package lila.mymodule
+
+import munit.FunSuite
+
+class MyTest extends FunSuite:
+  test("feature works correctly"):
+    val result = MyClass.doSomething()
+    assertEquals(result, expected)
+```
+
+### Async Tests
+
+For testing Future-based code:
+
+```scala
+import scala.concurrent.Future
+
+test("async operation".ignore): // TODO remove ignore
+  val futureResult = MyClass.asyncOperation()
+  futureResult.map: result =>
+    assertEquals(result, expected)
+```
+
+### Test Fixtures
+
+Share setup across tests:
+
+```scala
+class GameTest extends FunSuite:
+  val testGame = FunFixture[Game](
+    setup = _ => Game.make(...),
+    teardown = _ => ()
+  )
+  
+  testGame.test("game logic"): game =>
+    assertEquals(game.turns, 0)
+```
+
+### Property Tests
+
+```scala
+import munit.ScalaCheckSuite
+import org.scalacheck.Prop.*
+
+class RatingTest extends ScalaCheckSuite:
+  property("rating is always positive"):
+    forAll: (wins: Int, losses: Int) =>
+      val rating = Glicko.calculate(wins, losses)
+      rating > 0
+```
+
+</Steps>
+
+### Test Coverage
+
+Modules with extensive test coverage:
+
+- **game**: Game logic, PGN, move validation
+- **rating**: Glicko-2 calculations
+- **user**: User accounts, authentication
+- **tournament**: Pairing algorithms
+- **study**: Analysis board logic
+- **puzzle**: Puzzle rating
+
+## Frontend Testing
+
+### Test Framework
+
+Frontend tests use Node.js built-in test runner:
+
+```typescript
+import { test } from 'node:test';
+import assert from 'node:assert';
+
+test('winningChances calculation', () => {
+  const chances = winningChances(100);
+  assert.strictEqual(chances, 0.95);
+});
+```
+
+### Running Tests
+
+Use the `ui/test` script:
+
+```bash
+# Run all tests
+ui/test
+
+# Watch mode
+ui/test -w
+
+# Test specific module
+ui/test winning
+
+# Test multiple patterns
+ui/test mod once
+```
+
+### Test Location
+
+Tests are in `tests/` subdirectories:
+
+```
+ui/lib/
+├── src/
+│   └── ...
+└── tests/
+    ├── winningChances.test.ts
+    ├── once.test.ts
+    └── ...
+```
+
+### Example Test
+
+```typescript
+import { test, describe } from 'node:test';
+import assert from 'node:assert';
+import { winningChances } from '../src/winningChances';
+
+describe('winningChances', () => {
+  test('returns 50% for even positions', () => {
+    assert.strictEqual(winningChances(0), 0.5);
+  });
+  
+  test('returns 95% for +300 centipawns', () => {
+    assert.strictEqual(winningChances(300), 0.95);
+  });
+  
+  test('returns 5% for -300 centipawns', () => {
+    assert.strictEqual(winningChances(-300), 0.05);
+  });
+});
+```
+
+### Test Build Process
+
+The test runner:
+1. Compiles TypeScript tests to JavaScript
+2. Runs tests with Node.js test runner
+3. Reports results
+
+### Watch Mode
+
+Continuously run tests on file changes:
+
+```bash
+ui/test -w
+```
+
+Output:
+
+```
+✓ ui/lib/tests/winningChances.test.ts (3 tests)
+✓ ui/lib/tests/once.test.ts (2 tests)
+
+Watching for changes...
+```
+
+## Integration Testing
+
+### Manual Testing
+
+For full integration testing:
+
+<Steps>
+
+### Start Services
+
+```bash
+# MongoDB
+sudo systemctl start mongod
+
+# Redis
+sudo systemctl start redis
+```
+
+### Run Backend
+
+```bash
+./lila.sh
+run
+```
+
+### Build Frontend
+
+```bash
+ui/build -w
+```
+
+### Test in Browser
+
+Navigate to `http://localhost:9663` and test features manually.
+
+</Steps>
+
+### Browser Testing
+
+Lichess uses **Browserstack** for cross-browser testing.
+
+Supported browsers:
+- Firefox 115+
+- Chrome/Chromium 112+
+- Edge 109+
+- Safari 13.1+
+- Opera 91+
+
+## Continuous Integration
+
+### GitHub Actions
+
+Tests run automatically on every commit:
+
+```yaml
+# .github/workflows/test.yml
+- name: Run Scala tests
+  run: sbt test
+
+- name: Run UI tests
+  run: ui/test
+```
+
+### Pre-commit Hooks
+
+Run tests before committing:
+
+```bash
+# Install pre-commit hook
+echo '#!/bin/bash\nsbt test && ui/test' > .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
+
+## Test-Driven Development
+
+Recommended TDD workflow:
+
+<Steps>
+
+### Write Failing Test
+
+```scala
+test("new feature"):
+  val result = MyClass.newFeature()
+  assertEquals(result, expected)
+```
+
+### Run Test (Should Fail)
+
+```scala
+testOnly lila.mymodule.MyTest
+```
+
+### Implement Feature
+
+Write the minimal code to make the test pass.
+
+### Run Test (Should Pass)
+
+```scala
+testOnly lila.mymodule.MyTest
+```
+
+### Refactor
+
+Improve code while keeping tests passing.
+
+</Steps>
+
+## Debugging Tests
+
+### Backend Test Debugging
+
+Add debug output:
+
+```scala
+test("debug example"):
+  val result = MyClass.doSomething()
+  println(s"Result: $result")  // Debug output
+  assertEquals(result, expected)
+```
+
+Run with verbose output:
+
+```scala
+testOnly lila.mymodule.MyTest -- -v
+```
+
+### Frontend Test Debugging
+
+Use Node.js debugger:
+
+```bash
+node --inspect ui/.test/runner.mjs
+```
+
+Or add console output:
+
+```typescript
+test('debug example', () => {
+  const result = myFunction();
+  console.log('Result:', result);  // Debug output
+  assert.strictEqual(result, expected);
+});
+```
+
+## Performance Testing
+
+### Backend Performance
+
+Benchmark critical code paths:
+
+```scala
+import scala.concurrent.duration.*
+
+test("performance benchmark"):
+  val start = System.nanoTime()
+  
+  (1 to 1000).foreach: _ =>
+    MyClass.expensiveOperation()
+  
+  val duration = Duration.fromNanos(System.nanoTime() - start)
+  assert(duration < 1.second, s"Too slow: $duration")
+```
+
+### Frontend Performance
+
+Time-based assertions:
+
+```typescript
+test('performance test', async () => {
+  const start = performance.now();
+  
+  await expensiveOperation();
+  
+  const duration = performance.now() - start;
+  assert(duration < 1000, `Too slow: ${duration}ms`);
+});
+```
+
+## Test Best Practices
+
+### Do
+
+- ✅ Write tests for new features
+- ✅ Test edge cases and error conditions
+- ✅ Keep tests fast and focused
+- ✅ Use descriptive test names
+- ✅ Test behavior, not implementation
+- ✅ Run tests before committing
+
+### Don't
+
+- ❌ Test private implementation details
+- ❌ Write tests that depend on external services (without mocks)
+- ❌ Create flaky tests that pass/fail randomly
+- ❌ Ignore failing tests
+- ❌ Write tests that are slower than the code they test
+
+## Troubleshooting
+
+### Tests Fail Locally but Pass in CI
+
+- Check for environment-specific issues
+- Verify dependencies are up-to-date
+- Check system time/timezone settings
+
+### Flaky Tests
+
+- Add `.ignore` to investigate later:
+  ```scala
+  test("flaky test".ignore):
+    // TODO: Fix flakiness
+  ```
+- Increase timeouts for async tests
+- Avoid tests that depend on timing
+
+### Slow Tests
+
+```scala
+// Run tests in parallel (if safe)
+Test / parallelExecution := true
+
+// Or disable for specific module
+game / Test / parallelExecution := false
+```
+
+## Next Steps
+
+- Review [development setup](/development/setup)
+- Understand the [module structure](/development/modules)
+- Learn about [building](/development/building) the project
+
+## Additional Resources
+
+- [munit documentation](https://scalameta.org/munit/)
+- [scalacheck documentation](https://scalacheck.org)
+- [Node.js test runner](https://nodejs.org/api/test.html)
+- [Contributing guidelines](https://github.com/lichess-org/lila/blob/master/CONTRIBUTING.md)

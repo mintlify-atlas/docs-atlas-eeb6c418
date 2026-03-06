@@ -1,0 +1,262 @@
+---
+title: "Create Arena Tournament"
+description: "Create a new arena tournament with custom settings"
+---
+
+## Overview
+
+Create a new arena tournament on Lichess. Arena tournaments use automatic pairing and allow players to join at any time during the tournament.
+
+<Note>
+  Requires authentication with OAuth token that has the `tournament:write` scope.
+</Note>
+
+## Endpoint
+
+<CodeGroup>
+```bash POST /api/tournament
+curl -X POST https://lichess.org/api/tournament \
+  -H "Authorization: Bearer {token}" \
+  -d "name=My Arena Tournament" \
+  -d "clockTime=3" \
+  -d "clockIncrement=2" \
+  -d "minutes=45" \
+  -d "startDate=1710000000000"
+```
+</CodeGroup>
+
+## Authentication
+
+Requires OAuth token with `tournament:write` scope:
+
+```bash
+Authorization: Bearer lip_xxxxxxxxxxxx
+```
+
+## Request Parameters
+
+<ParamField body="name" type="string">
+  Tournament name (2-35 characters). Optional - defaults to your username or a random name
+</ParamField>
+
+<ParamField body="clockTime" type="number" required>
+  Clock initial time in minutes (decimal allowed, e.g., 0.5 for 30 seconds)
+</ParamField>
+
+<ParamField body="clockIncrement" type="integer" required>
+  Clock increment in seconds per move
+</ParamField>
+
+<ParamField body="minutes" type="integer" required>
+  Tournament duration in minutes. Valid options: 20, 25, 30, 35, 40, 45, 50, 55, 60, 70, 80, 90, 100, 110, 120, 150, 180, 210, 240, 270, 300, 330, 360, 420, 480, 540, 600, 720
+</ParamField>
+
+<ParamField body="waitMinutes" type="integer">
+  Delay before tournament starts (1-60 minutes). Default: 5. Omit for instant start if using `startDate`
+</ParamField>
+
+<ParamField body="startDate" type="integer">
+  Timestamp in milliseconds for scheduled start. Cannot be more than 1 day in advance for non-verified accounts
+</ParamField>
+
+<ParamField body="variant" type="string">
+  Chess variant. Options: `standard`, `chess960`, `crazyhouse`, `antichess`, `atomic`, `horde`, `kingOfTheHill`, `racingKings`, `threeCheck`. Default: `standard`
+</ParamField>
+
+<ParamField body="rated" type="boolean">
+  Whether the tournament is rated. Default: `true`. Some variant/time control combinations cannot be rated
+</ParamField>
+
+<ParamField body="position" type="string">
+  FEN string for custom starting position (thematic tournament). Only valid for standard variant
+</ParamField>
+
+<ParamField body="berserkable" type="boolean">
+  Allow players to go berserk (halve clock for bonus points). Default: `true`. Not allowed if increment > time*2
+</ParamField>
+
+<ParamField body="streakable" type="boolean">
+  Enable streak scoring. Default: `true`
+</ParamField>
+
+<ParamField body="hasChat" type="boolean">
+  Enable tournament chat. Default: `true`
+</ParamField>
+
+<ParamField body="description" type="string">
+  Tournament description text
+</ParamField>
+
+<ParamField body="password" type="string">
+  Password required to join the tournament. Creates a private tournament
+</ParamField>
+
+### Entry Conditions
+
+<ParamField body="conditions.minRating.rating" type="integer">
+  Minimum rating required to join (in the relevant perf type)
+</ParamField>
+
+<ParamField body="conditions.maxRating.rating" type="integer">
+  Maximum rating allowed to join (in the relevant perf type)
+</ParamField>
+
+<ParamField body="conditions.nbRatedGame.nb" type="integer">
+  Minimum number of rated games required in the relevant perf type
+</ParamField>
+
+<ParamField body="conditions.accountAge.nb" type="integer">
+  Minimum account age in days
+</ParamField>
+
+<ParamField body="conditions.allowList" type="string">
+  Comma-separated list of usernames allowed to join (creates an allow-list tournament)
+</ParamField>
+
+### Team Battle Parameters
+
+<ParamField body="teamBattleByTeam" type="string">
+  Team ID to create a team battle tournament. You must be a team leader to use this
+</ParamField>
+
+<ParamField body="conditions.teamMember.teamId" type="string">
+  Restrict tournament to members of a specific team
+</ParamField>
+
+## Response
+
+Returns the created tournament object with all details:
+
+<ResponseField name="id" type="string">
+  8-character tournament ID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Tournament name
+</ResponseField>
+
+<ResponseField name="status" type="integer">
+  Always `10` (created) for newly created tournaments
+</ResponseField>
+
+<ResponseField name="createdBy" type="string">
+  Your user ID
+</ResponseField>
+
+<ResponseField name="startsAt" type="integer">
+  Tournament start timestamp in milliseconds
+</ResponseField>
+
+<ResponseField name="finishesAt" type="integer">
+  Tournament end timestamp in milliseconds
+</ResponseField>
+
+<ResponseField name="nbPlayers" type="integer">
+  Number of players (initially 0 or 1 if auto-joined)
+</ResponseField>
+
+## Example Response
+
+```json
+{
+  "id": "QITRjufu",
+  "createdBy": "your_username",
+  "startsAt": 1709743500000,
+  "name": "My Arena Tournament",
+  "clock": {
+    "limit": 180,
+    "increment": 2
+  },
+  "minutes": 45,
+  "status": 10,
+  "nbPlayers": 1,
+  "variant": {
+    "key": "standard",
+    "name": "Standard"
+  },
+  "rated": true,
+  "perf": {
+    "key": "blitz",
+    "name": "Blitz"
+  },
+  "finishesAt": 1709746200000
+}
+```
+
+## Validation Rules
+
+### Clock Validation
+
+- Total time must be > 0 (clockTime + clockIncrement > 0)
+- For bot tournaments, time control must be bot-compatible (≥ 2+1)
+- Berserk disabled if increment > clockTime * 2
+
+### Duration Validation
+
+- Minimum games per player must be ≥ 3
+- Maximum games per player must be ≤ 150
+- Calculated as: (minutes * 60) / estimatedGameSeconds
+
+### Rating Validation
+
+- Cannot be rated if using custom position (unless it's a known thematic opening)
+- 15s and 0+1 variant games cannot be rated
+
+## Rate Limits
+
+<Warning>
+  Tournament creation is rate-limited based on:
+  - User status (verified, streamer, titled player)
+  - Tournament visibility (private vs public)
+  - IP address
+  
+  Typical limits:
+  - Verified users: 2 tournaments per hour
+  - Regular users: 20 tournaments per hour (higher cost per creation)
+  - Private tournaments have lower rate limit cost
+</Warning>
+
+## Error Responses
+
+<ResponseExample>
+```json 400 Bad Request
+{
+  "error": "Invalid clock"
+}
+```
+
+```json 400 Bad Request
+{
+  "error": "Increase tournament duration, or decrease game clock"
+}
+```
+
+```json 429 Too Many Requests
+{
+  "error": "You are joining too many tournaments"
+}
+```
+</ResponseExample>
+
+## Best Practices
+
+<Tip>
+  - Use descriptive tournament names
+  - Set appropriate wait times (5-10 minutes recommended)
+  - Consider time zones when scheduling tournaments
+  - For team battles, coordinate with team leaders
+  - Test time controls to ensure sufficient game count
+</Tip>
+
+## Related Endpoints
+
+- [List Tournaments](/api/tournaments/list) - Get all current tournaments
+- [Join Tournament](/api/tournaments/join) - Join a tournament
+- [Update Tournament](/api/tournaments/update) - Update tournament settings (before start)
+
+## Source Code Reference
+
+Implementation can be found in:
+- `app/controllers/Tournament.scala:249-288` - `create` method
+- `modules/tournament/src/main/TournamentApi.scala:56-71` - `createTournament` method
+- `modules/tournament/src/main/TournamentForm.scala` - Form validation

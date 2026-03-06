@@ -1,0 +1,554 @@
+---
+title: Database Architecture
+description: MongoDB data models, schema design, and indexing strategy
+---
+
+## Overview
+
+Lichess uses **MongoDB** as its primary database, storing over **4.7 billion games** and supporting millions of active users. The architecture emphasizes async operations, denormalization for read performance, and strategic indexing for fast queries.
+
+## Database Technology
+
+### MongoDB Setup
+
+- **Driver**: ReactiveMongo (asynchronous Scala driver)
+- **Version**: MongoDB 5.0+
+- **Deployment**: Replica sets for high availability
+- **Storage**: WiredTiger storage engine with compression
+
+### Configuration
+
+```hocon
+// conf/base.conf
+mongodb {
+  uri = "mongodb://127.0.0.1:27017?appName=lila"
+  mongo-async-driver = ${akka}
+  yolo {
+    uri = ${mongodb.uri}
+  }
+}
+```
+
+### Database Connections
+
+Lichess uses two main database connections:
+
+```scala
+// modules/db/src/main/Env.scala
+final class Env(appConfig: Configuration, shutdown: CoordinatedShutdown):
+  
+  private val driver = new AsyncDriver(appConfig.get[Config]("mongodb").some)
+  
+  // Main database - strongly consistent
+  lazy val mainDb = Db(
+    name = "main",
+    uri = appConfig.get[String]("mongodb.uri"),
+    driver = driver
+  )
+  
+  // "YOLO" database - weakly replicated for low-value documents
+  lazy val yoloDb = AsyncDb(
+    name = "yolo",
+    uri = appConfig.get[String]("mongodb.yolo.uri"),
+    driver = driver
+  ).taggedWith[YoloDb]
+```
+
+**Main DB**: Critical data (games, users, ratings)
+**YOLO DB**: Low-priority data that can tolerate eventual consistency (temporary data, non-critical logs)
+
+## Data Models
+
+### Game Collection
+
+The largest collection in Lichess, storing 4.7B+ games:
+
+<Accordion title="Game Document Schema">
+
+```scala
+case class Game(
+  _id: GameId,                    // Unique 8-character game ID
+  players: Players,               // White and Black player info
+  status: Status,                 // Created, Started, Mate, Draw, etc.
+  turns: Int,                     // Number of half-moves (ply)
+  startedAt: Instant,
+  finishedAt: Option[Instant],
+  winnerId: Option[UserId],
+  binaryPieces: ByteArray,        // Compressed board state
+  binaryMoves: ByteArray,         // Compressed move list
+  clock: Option[Clock],           // Time control settings
+  daysPerTurn: Option[Int],       // For correspondence games
+  mode: Mode,                     // Casual or Rated
+  variant: Variant,               // Standard, Chess960, etc.
+  analysed: Boolean,              // Has computer analysis
+  metadata: Metadata              // Opening, tournament ID, etc.
+)
+
+case class Players(
+  white: Player,
+  black: Player
+)
+
+case class Player(
+  userId: Option[UserId],
+  rating: Option[Int],
+  ratingDiff: Option[Int],
+  provisional: Boolean,
+  aiLevel: Option[Int]            // For games vs computer
+)
+```
+
+**Key optimizations**:
+- **Binary encoding**: Moves and positions compressed to ~50 bytes per game
+- **Denormalization**: Player data embedded (no joins needed)
+- **Selective indexing**: Only frequently queried fields indexed
+
+</Accordion>
+
+<Accordion title="Game Compression">
+
+Games use custom binary encoding to minimize storage:
+
+```scala
+// Game moves compressed from UCI strings
+// "e2e4 e7e5 g1f3" -> ~6 bytes
+// Board positions use Forsyth-Edwards-like encoding
+
+object BinaryFormat:
+  def encode(moves: List[Move]): ByteArray = 
+    // Each move: 2 bytes (from square 6 bits, to square 6 bits, promotion 4 bits)
+    moves.foldLeft(ByteArrayBuilder()): (builder, move) =>
+      builder.putByte(
+        (move.orig << 2) | (move.dest >> 4)
+      )
+      builder.putByte(
+        ((move.dest & 0xF) << 4) | move.promotion.getOrElse(0)
+      )
+    .result()
+```
+
+This compression is crucial for storing billions of games efficiently.
+
+</Accordion>
+
+### User Collection
+
+<Accordion title="User Document Schema">
+
+```scala
+case class User(
+  _id: UserId,                    // Username (unique, case-insensitive)
+  username: String,               // Display name
+  perfs: Perfs,                   // Ratings by variant/time control
+  enabled: Boolean,               // Account active
+  roles: List[String],            // ROLE_ADMIN, ROLE_COACH, etc.
+  profile: Option[Profile],
+  seenAt: Option[Instant],        // Last online
+  playTime: Option[PlayTime],     // Total time playing
+  count: Count,                   // Game counts, AI games, etc.
+  createdAt: Instant,
+  lang: Option[String],           // Preferred language
+  plan: Option[Plan]              // Patron status
+)
+
+case class Perfs(
+  bullet: Perf,
+  blitz: Perf,
+  rapid: Perf,
+  classical: Perf,
+  correspondence: Perf,
+  chess960: Perf,
+  // ... other variants
+)
+
+case class Perf(
+  glicko: Glicko,                 // Rating, RD, volatility
+  nb: Int,                        // Number of games
+  recent: List[IntRating],        // Recent rating history
+  latest: Option[Instant]         // Last played
+)
+```
+
+**Design notes**:
+- All rating data embedded in user document (fast profile queries)
+- Username is both `_id` and searchable field
+- Denormalized counts avoid expensive aggregations
+
+</Accordion>
+
+### Study Collection
+
+<Accordion title="Study Schema">
+
+Studies store shared analysis boards:
+
+```scala
+case class Study(
+  _id: StudyId,
+  name: String,
+  members: List[StudyMember],     // Collaborators with permissions
+  position: Position.Ref,         // Current chapter/node position
+  ownerId: UserId,
+  visibility: Visibility,         // Public, Unlisted, Private
+  settings: Settings,
+  from: From,                     // Created from game/scratch
+  likes: Likes,
+  createdAt: Instant,
+  updatedAt: Instant
+)
+
+case class Chapter(
+  _id: ChapterId,
+  studyId: StudyId,
+  name: String,
+  root: Node,                     // Tree of moves/variations
+  tags: Tags,                     // PGN tags
+  setup: Setup,                   // Starting position
+  order: Int
+)
+
+// Chapters stored in separate collection
+// One study can have many chapters
+```
+
+</Accordion>
+
+### Tournament Collection
+
+<Accordion title="Tournament Schema">
+
+```scala
+case class Tournament(
+  _id: TournamentId,
+  name: String,
+  status: Status,                 // Created, Started, Finished
+  schedule: Option[Schedule],     // For scheduled tournaments
+  minutes: Int,                   // Duration
+  clock: Clock,                   // Game time control
+  variant: Variant,
+  position: Option[StartingPosition],
+  mode: Mode,                     // Rated/Casual
+  conditions: Conditions,         // Entry requirements
+  teamBattle: Option[TeamBattle],
+  stats: Stats,                   // Live stats during tournament
+  winnerId: Option[UserId],
+  createdAt: Instant,
+  createdBy: UserId,
+  startsAt: Instant
+)
+
+// Player standings stored separately for performance
+case class Player(
+  _id: UserId,
+  tourId: TournamentId,
+  rating: Int,
+  provisional: Boolean,
+  withdraw: Boolean,              // Player withdrew
+  score: Int,                     // Tournament points
+  fire: Boolean,                  // "On fire" streak
+  performance: Int                // Performance rating
+)
+```
+
+Tournament pairings and results stored in separate collections for scalability.
+
+</Accordion>
+
+## Indexing Strategy
+
+### Game Indexes
+
+Critical indexes for fast game queries:
+
+```javascript
+// Primary lookup
+db.game5.createIndex({ _id: 1 })
+
+// User's games (paginated profile view)
+db.game5.createIndex({ "players.userId": 1, "startedAt": -1 })
+
+// Recent games by status
+db.game5.createIndex({ "status": 1, "startedAt": -1 })
+
+// Tournament games
+db.game5.createIndex({ "metadata.tournamentId": 1 })
+
+// Analysed games for export
+db.game5.createIndex({ "analysed": 1, "startedAt": -1 })
+
+// Variant-specific queries
+db.game5.createIndex({ "variant": 1, "mode": 1, "startedAt": -1 })
+```
+
+### User Indexes
+
+```javascript
+// Primary lookup (username)
+db.user4.createIndex({ _id: 1 })
+
+// Leaderboards (by rating)
+db.user4.createIndex({ "perfs.blitz.glicko.rating": -1, "enabled": 1 })
+db.user4.createIndex({ "perfs.bullet.glicko.rating": -1, "enabled": 1 })
+// ... for each time control
+
+// Online users
+db.user4.createIndex({ "seenAt": -1 })
+
+// Profile search
+db.user4.createIndex({ "profile.country": 1 })
+```
+
+### Compound Indexes
+
+Multi-field indexes for complex queries:
+
+```javascript
+// Rated games by user and variant
+db.game5.createIndex({
+  "players.userId": 1,
+  "variant": 1,
+  "mode": 1,
+  "startedAt": -1
+})
+
+// Tournament leaderboards
+db.tournament_player.createIndex({
+  "tourId": 1,
+  "score": -1,
+  "rating": -1
+})
+```
+
+## Query Patterns
+
+### ReactiveMongo Usage
+
+All database queries are asynchronous:
+
+```scala
+import reactivemongo.api.bson.*
+import reactivemongo.api.ReadPreference
+
+final class GameRepo(val coll: Coll)(using Executor):
+  
+  // Find single game by ID
+  def find(id: GameId): Future[Option[Game]] =
+    coll.byId[Game](id)
+  
+  // Find user's recent games (paginated)
+  def recentByUser(
+    userId: UserId,
+    nb: Int,
+    page: Int = 1
+  ): Future[List[Game]] =
+    coll
+      .find($doc("players.userId" -> userId))
+      .sort($sort.desc("startedAt"))
+      .skip((page - 1) * nb)
+      .cursor[Game]()
+      .list(nb)
+  
+  // Count games matching criteria
+  def count(userId: UserId, rated: Boolean): Future[Int] =
+    coll.countSel($doc(
+      "players.userId" -> userId,
+      "mode" -> (if rated then Mode.Rated.id else Mode.Casual.id)
+    ))
+  
+  // Update game status
+  def finish(id: GameId, winner: Option[UserId]): Future[Unit] =
+    coll.update.one(
+      $id(id),
+      $set(
+        "status" -> Status.Finished.id,
+        "winnerId" -> winner,
+        "finishedAt" -> DateTime.now
+      )
+    ).void
+```
+
+### Aggregation Pipelines
+
+Complex analytics use MongoDB aggregation:
+
+```scala
+// User's opening statistics
+def openingStats(userId: UserId): Future[List[OpeningStat]] =
+  coll.aggregateList(): framework =>
+    import framework.*
+    List(
+      Match($doc("players.userId" -> userId)),
+      Group(BSONString("$metadata.opening"))(
+        "count" -> SumAll,
+        "wins" -> Sum($doc("$cond" -> $arr(
+          $doc("$eq" -> $arr("$winnerId", userId)),
+          1,
+          0
+        )))
+      ),
+      Sort(Descending("count")),
+      Limit(20)
+    )
+  .map(_.flatMap(_.asOpt[OpeningStat]))
+```
+
+## Data Denormalization
+
+Lichess extensively denormalizes data for read performance:
+
+### Embedded Data Patterns
+
+**Games embed player data**:
+```scala
+// Instead of:
+// game.whiteId -> user.find(whiteId) -> user.rating
+
+// Store directly:
+game.players.white.rating  // No join needed
+```
+
+**Users embed rating history**:
+```scala
+user.perfs.blitz.recent  // Last 12 ratings inline
+```
+
+**Tournaments embed live stats**:
+```scala
+tournament.stats.games  // Updated during tournament
+tournament.stats.moves
+```
+
+### Tradeoffs
+
+**Pros**:
+- ✅ Fast reads (no joins)
+- ✅ Single document queries
+- ✅ Good for immutable data (finished games)
+
+**Cons**:
+- ❌ Data duplication
+- ❌ Stale embedded data (e.g., username changes)
+- ❌ Larger document sizes
+
+## Caching Layer
+
+MongoDB queries are cached in-memory with Scaffeine:
+
+```scala
+// modules/user/src/main/Cached.scala
+final class Cached(userRepo: UserRepo)(using Executor):
+  
+  private val cache = scaffeine()
+    .expireAfterWrite(20.minutes)
+    .buildAsyncFuture[UserId, Option[User]](userRepo.byId)
+  
+  def async(id: UserId): Future[Option[User]] = cache.get(id)
+  
+  def invalidate(id: UserId): Unit = cache.synchronous().invalidate(id)
+```
+
+Cache invalidation on writes:
+```scala
+def update(id: UserId, user: User): Future[Unit] =
+  repo.update(id, user).andThen:
+    case Success(_) => cached.invalidate(id)
+```
+
+## Search Integration
+
+### Elasticsearch
+
+Full-text search backed by Elasticsearch:
+
+- **Game search**: Search games by player, opening, date range
+- **Study search**: Find public studies by content
+- **Forum search**: Full-text forum post search
+
+```scala
+// modules/search/src/main/Env.scala
+final class Env(config: SearchConfig)(using Executor):
+  
+  private val client: ESClient = makeClient(config)
+  
+  def search(query: Query): Future[List[Game]] =
+    client.search(
+      index = "game",
+      query = query.toJson
+    ).map(parseResults)
+```
+
+Elasticsearch indexes are populated by background jobs consuming MongoDB change streams.
+
+## Backup and Archival
+
+### Game Database
+
+**Free PGN Database**: All rated games published at [database.lichess.org](https://database.lichess.org)
+- Monthly exports in PGN format
+- Compressed with zstd
+- Billions of games available for analysis
+
+### Backup Strategy
+
+- **MongoDB replica sets**: Automatic replication to secondary nodes
+- **Daily snapshots**: Full database snapshots retained
+- **Point-in-time recovery**: Oplog replay for disaster recovery
+- **Geographic distribution**: Replicas in multiple data centers
+
+## Performance Considerations
+
+<Accordion title="Query Optimization">
+
+**Use projections** to fetch only needed fields:
+```scala
+coll.find(selector)
+  .projection($doc("_id" -> 1, "players" -> 1))
+  .one[Game]
+```
+
+**Limit result sets**:
+```scala
+coll.find(selector).cursor().list(100)  // Max 100 results
+```
+
+**Use indexes** - explain plans to verify index usage:
+```scala
+coll.find(selector).explain()  // Check query plan
+```
+
+</Accordion>
+
+<Accordion title="Write Optimization">
+
+**Batch writes** for bulk operations:
+```scala
+coll.update.many(updates.map { case (id, update) =>
+  UpdateElement(q = $id(id), u = update)
+})
+```
+
+**Background index builds**:
+```javascript
+db.collection.createIndex({field: 1}, {background: true})
+```
+
+</Accordion>
+
+<Accordion title="Monitoring">
+
+Database metrics tracked:
+- Query latency (p50, p95, p99)
+- Slow query log (>100ms)
+- Index usage statistics
+- Connection pool utilization
+- Replication lag
+
+Kamon integration exports metrics to InfluxDB/Grafana.
+
+</Accordion>
+
+## See Also
+
+- [Backend Architecture](/architecture/backend) - Scala application layer
+- [WebSocket Architecture](/architecture/websockets) - Real-time game updates
+- [Deployment](/architecture/deployment) - Database infrastructure

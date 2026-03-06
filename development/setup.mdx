@@ -1,0 +1,298 @@
+---
+title: Development Setup
+description: Set up your local development environment for Lichess
+---
+
+## Overview
+
+Lichess (lila) is built with Scala 3, Play Framework 2.8, and TypeScript. This guide will help you set up a complete development environment.
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+### Required
+
+- **Java Development Kit (JDK) 21+**: Required for running Scala and sbt
+- **Node.js v24.11.1+**: Required for UI development
+- **pnpm**: Package manager for the UI monorepo
+- **MongoDB**: Database for storing games and user data
+- **Redis**: Used for WebSocket communication and caching
+
+### Optional
+
+- **git**: For version control
+- **nginx**: For proxying HTTP requests (production-like setup)
+
+## Installation Steps
+
+<Steps>
+
+### Install Java
+
+Lichess requires JDK 21 or later. Verify your installation:
+
+```bash
+java -version
+```
+
+Ensure `JAVA_HOME` is set correctly:
+
+```bash
+export JAVA_HOME=/path/to/jdk
+export PATH=$JAVA_HOME/bin:$PATH
+```
+
+<Note>
+The `lila.sh` script will warn you if `JAVA_HOME` is not set or if your Java installation is incomplete (JRE instead of JDK).
+</Note>
+
+### Install Node.js and pnpm
+
+Lichess requires Node.js v24.11.1 or later:
+
+<CodeGroup>
+
+```bash nvm
+# Using nvm (recommended)
+nvm install 24.11.1
+nvm use 24.11.1
+```
+
+```bash direct
+# Or download from nodejs.org
+# Verify installation
+node -v  # Should show v24.11.1 or higher
+```
+
+</CodeGroup>
+
+Install pnpm globally:
+
+```bash
+npm install -g pnpm
+```
+
+### Install MongoDB
+
+Lichess uses MongoDB to store games, users, and other data.
+
+<CodeGroup>
+
+```bash ubuntu
+# Ubuntu/Debian
+sudo apt-get install mongodb-org
+sudo systemctl start mongod
+sudo systemctl enable mongod
+```
+
+```bash macos
+# macOS with Homebrew
+brew tap mongodb/brew
+brew install mongodb-community
+brew services start mongodb-community
+```
+
+```bash docker
+# Using Docker
+docker run -d -p 27017:27017 --name mongodb mongo:latest
+```
+
+</CodeGroup>
+
+### Install Redis
+
+Redis is used for WebSocket communication via the separate lila-ws server.
+
+<CodeGroup>
+
+```bash ubuntu
+# Ubuntu/Debian
+sudo apt-get install redis-server
+sudo systemctl start redis
+sudo systemctl enable redis
+```
+
+```bash macos
+# macOS with Homebrew
+brew install redis
+brew services start redis
+```
+
+```bash docker
+# Using Docker
+docker run -d -p 6379:6379 --name redis redis:latest
+```
+
+</CodeGroup>
+
+### Clone the Repository
+
+```bash
+git clone https://github.com/lichess-org/lila.git
+cd lila
+```
+
+### Configure Application
+
+Copy the default configuration files:
+
+```bash
+cp .sbtopts.default .sbtopts
+cp conf/application.conf.default conf/application.conf
+```
+
+<Note>
+The `.sbtopts` file configures JVM memory settings (2GB min, 8GB max by default). Adjust these values based on your system resources.
+</Note>
+
+Edit `conf/application.conf` to configure database connections and other settings as needed.
+
+### Install UI Dependencies
+
+Install frontend dependencies:
+
+```bash
+cd ui
+pnpm install
+cd ..
+```
+
+</Steps>
+
+## Running Lichess Locally
+
+### Start the Server
+
+<Steps>
+
+### Launch the sbt Console
+
+Run the `lila.sh` script to start the sbt console:
+
+```bash
+./lila.sh
+```
+
+You'll see the Lichess ASCII art banner and the sbt prompt:
+
+```
+   |\_    _ _      _
+   /o \  | (_) ___| |__   ___  ___ ___   ___  _ __ __ _
+ (_. ||  | | |/ __| '_ \ / _ \/ __/ __| / _ \| '__/ _` |
+   /__\  | | | (__| | | |  __/\__ \__ \| (_) | | | (_| |
+  )___(  |_|_|\___|_| |_|\___||___/___(_)___/|_|  \__, |
+                                                   |___/
+
+sbt:lila>
+```
+
+### Run the Application
+
+In the sbt console, type:
+
+```scala
+run
+```
+
+The application will compile and start. Once ready, you'll see:
+
+```
+[info] p.c.s.AkkaHttpServer - Listening for HTTP on /0:0:0:0:0:0:0:0:9663
+```
+
+### Access Lichess
+
+Open your browser and navigate to:
+
+```
+http://localhost:9663
+```
+
+</Steps>
+
+### Development Workflow
+
+In the sbt console, you have access to various commands:
+
+```scala
+// Reload and recompile changed files
+reload
+
+// Run tests
+test
+
+// Compile without running
+compile
+
+// Clean build artifacts
+clean
+```
+
+<Tip>
+The server supports hot reloading. When you modify Scala files, sbt will automatically detect changes and recompile when you save.
+</Tip>
+
+## UI Development
+
+For frontend development, build the UI assets in watch mode:
+
+```bash
+ui/build -w
+```
+
+This continuously rebuilds when changes are detected. See [UI Development](/development/ui-development) for more details.
+
+## Troubleshooting
+
+### JVM Memory Issues
+
+If you encounter out-of-memory errors, adjust the settings in `.sbtopts`:
+
+```
+-J-Xms4g
+-J-Xmx16g
+```
+
+### Port Already in Use
+
+If port 9663 is already in use, you can change it in `conf/application.conf`:
+
+```
+http.port = 9664
+```
+
+### MongoDB Connection Failed
+
+Verify MongoDB is running:
+
+```bash
+# Check status
+sudo systemctl status mongod  # Linux
+brew services list | grep mongo  # macOS
+
+# View logs
+tail -f /var/log/mongodb/mongod.log
+```
+
+### Node.js Version Mismatch
+
+The `ui/build` script checks for the minimum required Node.js version. If you see an error, upgrade Node.js:
+
+```bash
+node -v  # Check current version
+nvm install 24.11.1  # Install required version
+```
+
+## Next Steps
+
+- Learn about the [module structure](/development/modules)
+- Set up [UI development workflow](/development/ui-development)
+- Read about [building the project](/development/building)
+- Explore [testing strategies](/development/testing)
+
+## Additional Resources
+
+- [Lichess Development Onboarding Wiki](https://github.com/lichess-org/lila/wiki/Lichess-Development-Onboarding)
+- [Contributing Guidelines](https://github.com/lichess-org/lila/blob/master/CONTRIBUTING.md)
+- [Discord Community](https://discord.gg/lichess)

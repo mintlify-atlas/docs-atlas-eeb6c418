@@ -1,122 +1,159 @@
 {
   "$schema": "https://mintlify.com/docs.json",
+  "name": "Lichess",
   "theme": "mint",
-  "name": "Mint Starter Kit",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#7c7c7c",
+    "light": "#111111",
+    "dark": "#dcdcdc"
   },
-  "favicon": "/favicon.svg",
+  "logo": {
+    "light": "https://media.brand.dev/061b49c9-9fda-49e8-b47c-9ad0e58aa1f5.jpg",
+    "dark": "https://media.brand.dev/23a24c65-34de-447a-a233-3f005a461fec.png"
+  },
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/lichess-org/lila"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/lichess-org/lila"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Get Started",
             "pages": [
-              "index",
+              "introduction",
               "quickstart",
-              "development"
+              "architecture"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Core Features",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "features/games",
+              "features/puzzles",
+              "features/tournaments",
+              "features/studies",
+              "features/broadcasts",
+              "features/analysis"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Development",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "development/setup",
+              "development/modules",
+              "development/ui-development",
+              "development/building",
+              "development/testing"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "Architecture",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "architecture/backend",
+              "architecture/frontend",
+              "architecture/database",
+              "architecture/websockets",
+              "architecture/deployment"
+            ]
+          },
+          {
+            "group": "Contributing",
+            "pages": [
+              "contributing/overview",
+              "contributing/guidelines",
+              "contributing/code-style",
+              "contributing/translations"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "API Reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Getting Started",
             "pages": [
-              "api-reference/introduction"
+              "api/overview",
+              "api/authentication",
+              "api/rate-limits"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Games",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api/games/export",
+              "api/games/streaming",
+              "api/games/search"
+            ]
+          },
+          {
+            "group": "Users",
+            "pages": [
+              "api/users/profile",
+              "api/users/activity",
+              "api/users/games"
+            ]
+          },
+          {
+            "group": "Tournaments",
+            "pages": [
+              "api/tournaments/list",
+              "api/tournaments/create",
+              "api/tournaments/join"
+            ]
+          },
+          {
+            "group": "Studies",
+            "pages": [
+              "api/studies/export",
+              "api/studies/import",
+              "api/studies/chapters"
+            ]
+          },
+          {
+            "group": "Puzzles",
+            "pages": [
+              "api/puzzles/daily",
+              "api/puzzles/activity",
+              "api/puzzles/dashboard"
+            ]
+          },
+          {
+            "group": "Broadcasts",
+            "pages": [
+              "api/broadcasts/list",
+              "api/broadcasts/rounds",
+              "api/broadcasts/push"
+            ]
+          },
+          {
+            "group": "TV & Streaming",
+            "pages": [
+              "api/tv/channels",
+              "api/tv/feed",
+              "api/streaming/events"
+            ]
+          },
+          {
+            "group": "Bot API",
+            "pages": [
+              "api/bot/account",
+              "api/bot/playing",
+              "api/bot/challenge"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

@@ -1,0 +1,784 @@
+---
+title: Playing Games
+description: Stream game events and make moves as a bot
+---
+
+## Event Stream
+
+<Info>
+The event stream is the primary way for bots to receive notifications about challenges, games starting, and game endings.
+</Info>
+
+### GET /api/stream/event
+
+Stream incoming events in real-time. This is a long-lived HTTP connection that sends newline-delimited JSON (ndjson).
+
+#### Authentication
+
+Requires OAuth token with `bot:play`, `board:play`, or `challenge:read` scope.
+
+#### Request
+
+<CodeGroup>
+```bash cURL
+curl -N https://lichess.org/api/stream/event \
+  -H "Authorization: Bearer <your_token>"
+```
+
+```python Python
+import requests
+import json
+
+token = "lip_yourtoken"
+headers = {"Authorization": f"Bearer {token}"}
+
+response = requests.get(
+    "https://lichess.org/api/stream/event",
+    headers=headers,
+    stream=True
+)
+
+for line in response.iter_lines():
+    if line:
+        event = json.loads(line)
+        print(f"Event type: {event['type']}")
+        
+        if event['type'] == 'gameStart':
+            game_id = event['game']['id']
+            print(f"Game started: {game_id}")
+        elif event['type'] == 'challenge':
+            print(f"Challenge from {event['challenge']['challenger']['name']}")
+```
+
+```javascript JavaScript
+const token = "lip_yourtoken";
+
+const response = await fetch("https://lichess.org/api/stream/event", {
+  headers: { "Authorization": `Bearer ${token}` }
+});
+
+const reader = response.body.getReader();
+const decoder = new TextDecoder();
+
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+  
+  const lines = decoder.decode(value).split('\n');
+  for (const line of lines) {
+    if (line.trim()) {
+      const event = JSON.parse(line);
+      console.log('Event:', event);
+    }
+  }
+}
+```
+</CodeGroup>
+
+#### Event Types
+
+<ResponseField name="gameStart" type="object">
+  A game has started. Connect to the game stream immediately.
+  
+  <Expandable title="properties">
+    <ResponseField name="game.id" type="string">
+      Game ID to connect to
+    </ResponseField>
+    <ResponseField name="game.compat" type="object">
+      Compatibility information
+      <Expandable title="properties">
+        <ResponseField name="bot" type="boolean">
+          Can be played with Bot API
+        </ResponseField>
+        <ResponseField name="board" type="boolean">
+          Can be played with Board API
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="gameFinish" type="object">
+  A game has finished.
+  
+  <Expandable title="properties">
+    <ResponseField name="game.id" type="string">
+      Game ID that finished
+    </ResponseField>
+    <ResponseField name="game.status" type="string">
+      Game status: `mate`, `resign`, `stalemate`, `timeout`, `draw`, `outoftime`, `cheat`, `noStart`, `abort`
+    </ResponseField>
+    <ResponseField name="game.winner" type="string">
+      Winner color: `white` or `black` (omitted for draws)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="challenge" type="object">
+  Someone challenged you.
+  
+  <Expandable title="properties">
+    <ResponseField name="challenge.id" type="string">
+      Challenge ID
+    </ResponseField>
+    <ResponseField name="challenge.challenger" type="object">
+      Challenger information
+    </ResponseField>
+    <ResponseField name="challenge.rated" type="boolean">
+      Whether the game is rated
+    </ResponseField>
+    <ResponseField name="challenge.variant" type="object">
+      Chess variant
+    </ResponseField>
+    <ResponseField name="challenge.timeControl" type="object">
+      Time control settings
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="challengeDeclined" type="object">
+  A challenge was declined.
+</ResponseField>
+
+<ResponseField name="challengeCanceled" type="object">
+  A challenge was canceled.
+</ResponseField>
+
+<CodeGroup>
+```json gameStart Event
+{
+  "type": "gameStart",
+  "game": {
+    "id": "5IrD6Gzz",
+    "compat": {
+      "bot": true,
+      "board": false
+    }
+  }
+}
+```
+
+```json gameFinish Event
+{
+  "type": "gameFinish",
+  "game": {
+    "id": "5IrD6Gzz",
+    "status": "mate",
+    "winner": "white"
+  }
+}
+```
+
+```json challenge Event
+{
+  "type": "challenge",
+  "challenge": {
+    "id": "kZ4Zs7cN",
+    "url": "https://lichess.org/kZ4Zs7cN",
+    "status": "created",
+    "challenger": {
+      "id": "player1",
+      "name": "Player1",
+      "rating": 1500,
+      "title": null,
+      "online": true
+    },
+    "destUser": {
+      "id": "mybot",
+      "name": "MyBot",
+      "rating": 1600,
+      "title": "BOT",
+      "online": true
+    },
+    "variant": {
+      "key": "standard",
+      "name": "Standard",
+      "short": "Std"
+    },
+    "rated": true,
+    "timeControl": {
+      "type": "clock",
+      "limit": 180,
+      "increment": 2,
+      "show": "3+2"
+    },
+    "color": "random",
+    "perf": {
+      "name": "Blitz"
+    }
+  }
+}
+```
+</CodeGroup>
+
+---
+
+## Game Stream
+
+### GET /api/bot/game/stream/{gameId}
+
+Stream the state of a game being played with the Bot API. Provides real-time updates for moves, draw offers, takeback requests, and opponent presence.
+
+<Note>
+Connect to this stream as soon as you receive a `gameStart` event.
+</Note>
+
+#### Authentication
+
+Requires OAuth token with `bot:play` scope.
+
+#### Parameters
+
+<ParamField path="gameId" type="string" required>
+  The game ID to stream
+</ParamField>
+
+#### Request
+
+<CodeGroup>
+```bash cURL
+curl -N https://lichess.org/api/bot/game/stream/5IrD6Gzz \
+  -H "Authorization: Bearer <your_token>"
+```
+
+```python Python
+import requests
+import json
+
+def stream_game(game_id, token):
+    headers = {"Authorization": f"Bearer {token}"}
+    url = f"https://lichess.org/api/bot/game/stream/{game_id}"
+    
+    response = requests.get(url, headers=headers, stream=True)
+    
+    for line in response.iter_lines():
+        if line:
+            event = json.loads(line)
+            
+            if event['type'] == 'gameFull':
+                print(f"Game: {event['id']}")
+                print(f"White: {event['white']['name']}")
+                print(f"Black: {event['black']['name']}")
+                handle_game_state(event['state'])
+            
+            elif event['type'] == 'gameState':
+                handle_game_state(event)
+            
+            elif event['type'] == 'chatLine':
+                print(f"Chat [{event['room']}] {event['username']}: {event['text']}")
+
+def handle_game_state(state):
+    moves = state['moves'].split()
+    print(f"Moves: {' '.join(moves)}")
+    print(f"Status: {state['status']}")
+    
+    if state['status'] == 'started':
+        # It's our turn if move count parity matches our color
+        is_our_turn = (len(moves) % 2 == 0)  # Adjust based on our color
+        if is_our_turn:
+            print("Our turn to move!")
+```
+</CodeGroup>
+
+#### Event Types
+
+<ResponseField name="gameFull" type="object">
+  Full game data. This is always the first message sent. Contains both game metadata and current state.
+  
+  <Expandable title="properties">
+    <ResponseField name="id" type="string">
+      Game ID
+    </ResponseField>
+    <ResponseField name="variant" type="object">
+      Chess variant
+    </ResponseField>
+    <ResponseField name="speed" type="string">
+      Game speed: `ultraBullet`, `bullet`, `blitz`, `rapid`, `classical`, `correspondence`
+    </ResponseField>
+    <ResponseField name="rated" type="boolean">
+      Whether the game is rated
+    </ResponseField>
+    <ResponseField name="initialFen" type="string">
+      Starting position ("startpos" for standard starting position)
+    </ResponseField>
+    <ResponseField name="white" type="object">
+      White player information
+    </ResponseField>
+    <ResponseField name="black" type="object">
+      Black player information
+    </ResponseField>
+    <ResponseField name="clock" type="object">
+      Clock configuration (if applicable)
+    </ResponseField>
+    <ResponseField name="state" type="object">
+      Current game state
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="gameState" type="object">
+  Current state of the game. Sent after each move.
+  
+  <Expandable title="properties">
+    <ResponseField name="moves" type="string">
+      Space-separated UCI moves (e.g., "e2e4 e7e5 g1f3")
+    </ResponseField>
+    <ResponseField name="wtime" type="integer">
+      White's remaining time in milliseconds
+    </ResponseField>
+    <ResponseField name="btime" type="integer">
+      Black's remaining time in milliseconds
+    </ResponseField>
+    <ResponseField name="winc" type="integer">
+      White's increment in milliseconds
+    </ResponseField>
+    <ResponseField name="binc" type="integer">
+      Black's increment in milliseconds
+    </ResponseField>
+    <ResponseField name="status" type="string">
+      Game status: `started`, `mate`, `resign`, `stalemate`, `timeout`, `draw`, etc.
+    </ResponseField>
+    <ResponseField name="winner" type="string">
+      Winner color: `white` or `black` (only when game is finished)
+    </ResponseField>
+    <ResponseField name="wdraw" type="boolean">
+      White is offering a draw
+    </ResponseField>
+    <ResponseField name="bdraw" type="boolean">
+      Black is offering a draw
+    </ResponseField>
+    <ResponseField name="wtakeback" type="boolean">
+      White is proposing a takeback
+    </ResponseField>
+    <ResponseField name="btakeback" type="boolean">
+      Black is proposing a takeback
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="chatLine" type="object">
+  A chat message.
+  
+  <Expandable title="properties">
+    <ResponseField name="username" type="string">
+      User who sent the message
+    </ResponseField>
+    <ResponseField name="text" type="string">
+      Message text
+    </ResponseField>
+    <ResponseField name="room" type="string">
+      Chat room: `player` or `spectator`
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="opponentGone" type="object">
+  The opponent left the game.
+  
+  <Expandable title="properties">
+    <ResponseField name="gone" type="boolean">
+      Whether opponent is gone
+    </ResponseField>
+    <ResponseField name="claimWinInSeconds" type="integer">
+      Seconds until you can claim victory (only when `gone: true`)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<CodeGroup>
+```json gameFull Event
+{
+  "type": "gameFull",
+  "id": "5IrD6Gzz",
+  "variant": {
+    "key": "standard",
+    "name": "Standard",
+    "short": "Std"
+  },
+  "speed": "blitz",
+  "perf": {
+    "name": "Blitz"
+  },
+  "rated": true,
+  "createdAt": 1710331200000,
+  "white": {
+    "id": "player1",
+    "name": "Player1",
+    "rating": 1500
+  },
+  "black": {
+    "id": "mybot",
+    "name": "MyBot",
+    "title": "BOT",
+    "rating": 1600
+  },
+  "initialFen": "startpos",
+  "clock": {
+    "initial": 180000,
+    "increment": 2000
+  },
+  "state": {
+    "type": "gameState",
+    "moves": "e2e4",
+    "wtime": 180000,
+    "btime": 178000,
+    "winc": 2000,
+    "binc": 2000,
+    "status": "started"
+  }
+}
+```
+
+```json gameState Event
+{
+  "type": "gameState",
+  "moves": "e2e4 e7e5 g1f3",
+  "wtime": 176000,
+  "btime": 178000,
+  "winc": 2000,
+  "binc": 2000,
+  "status": "started"
+}
+```
+
+```json opponentGone Event
+{
+  "type": "opponentGone",
+  "gone": true,
+  "claimWinInSeconds": 30
+}
+```
+</CodeGroup>
+
+---
+
+## Make a Move
+
+### POST /api/bot/game/{gameId}/move/{move}
+
+Make a move in a game being played with the Bot API.
+
+#### Authentication
+
+Requires OAuth token with `bot:play` scope.
+
+#### Parameters
+
+<ParamField path="gameId" type="string" required>
+  The game ID
+</ParamField>
+
+<ParamField path="move" type="string" required>
+  The move in UCI format (e.g., `e2e4`, `e7e5`, `e1g1` for castling)
+</ParamField>
+
+<ParamField query="offeringDraw" type="boolean">
+  Whether to offer a draw with this move
+</ParamField>
+
+#### Request
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://lichess.org/api/bot/game/5IrD6Gzz/move/e7e5 \
+  -H "Authorization: Bearer <your_token>"
+
+# Offer a draw
+curl -X POST "https://lichess.org/api/bot/game/5IrD6Gzz/move/e7e5?offeringDraw=true" \
+  -H "Authorization: Bearer <your_token>"
+```
+
+```python Python
+import requests
+
+def make_move(game_id, move, token, offer_draw=False):
+    headers = {"Authorization": f"Bearer {token}"}
+    url = f"https://lichess.org/api/bot/game/{game_id}/move/{move}"
+    
+    params = {}
+    if offer_draw:
+        params['offeringDraw'] = 'true'
+    
+    response = requests.post(url, headers=headers, params=params)
+    
+    if response.status_code == 200:
+        print(f"Move {move} played successfully")
+        return True
+    else:
+        print(f"Error: {response.json()}")
+        return False
+
+# Example usage
+make_move("5IrD6Gzz", "e7e5", "lip_yourtoken")
+make_move("5IrD6Gzz", "g8f6", "lip_yourtoken", offer_draw=True)
+```
+</CodeGroup>
+
+#### Response
+
+<ResponseField name="ok" type="boolean">
+  Whether the move was successful
+</ResponseField>
+
+<CodeGroup>
+```json Success (200)
+{
+  "ok": true
+}
+```
+
+```json Error (400)
+{
+  "error": "Not your turn, or game already over"
+}
+```
+
+```json Error (400) - Invalid UCI
+{
+  "error": "Invalid UCI: e2e9"
+}
+```
+</CodeGroup>
+
+#### UCI Move Format
+
+Moves must be in Universal Chess Interface (UCI) format:
+
+- Normal moves: `e2e4`, `g8f6`
+- Castling: `e1g1` (kingside), `e1c1` (queenside)
+- Promotion: `e7e8q` (promote to queen), `a7a8n` (promote to knight)
+- En passant: Use the destination square (e.g., `e5d6`)
+
+---
+
+## Additional Game Actions
+
+### Abort Game
+
+**POST /api/bot/game/{gameId}/abort**
+
+Abort a game. Only possible in the first few moves.
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://lichess.org/api/bot/game/5IrD6Gzz/abort \
+  -H "Authorization: Bearer <your_token>"
+```
+</CodeGroup>
+
+### Resign Game
+
+**POST /api/bot/game/{gameId}/resign**
+
+Resign a game.
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://lichess.org/api/bot/game/5IrD6Gzz/resign \
+  -H "Authorization: Bearer <your_token>"
+```
+</CodeGroup>
+
+### Write in Chat
+
+**POST /api/bot/game/{gameId}/chat**
+
+Post a message in the game chat.
+
+<ParamField body="room" type="string" required>
+  Chat room: `player` (private) or `spectator` (public)
+</ParamField>
+
+<ParamField body="text" type="string" required>
+  Message text
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://lichess.org/api/bot/game/5IrD6Gzz/chat \
+  -H "Authorization: Bearer <your_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"room":"player","text":"Good luck!"}'
+```
+
+```python Python
+import requests
+
+def send_chat(game_id, room, text, token):
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+    url = f"https://lichess.org/api/bot/game/{game_id}/chat"
+    data = {"room": room, "text": text}
+    
+    response = requests.post(url, headers=headers, json=data)
+    return response.status_code == 200
+
+# Send to player chat
+send_chat("5IrD6Gzz", "player", "Good game!", "lip_yourtoken")
+
+# Send to spectator chat
+send_chat("5IrD6Gzz", "spectator", "Thanks for watching!", "lip_yourtoken")
+```
+</CodeGroup>
+
+---
+
+## Complete Bot Example
+
+<CodeGroup>
+```python Complete Bot
+import requests
+import json
+import chess
+import chess.engine
+from threading import Thread
+
+class LichessBot:
+    def __init__(self, token, engine_path="/usr/games/stockfish"):
+        self.token = token
+        self.headers = {"Authorization": f"Bearer {token}"}
+        self.base_url = "https://lichess.org"
+        self.engine = chess.engine.SimpleEngine.popen_uci(engine_path)
+        
+    def stream_events(self):
+        """Stream incoming events"""
+        url = f"{self.base_url}/api/stream/event"
+        response = requests.get(url, headers=self.headers, stream=True)
+        
+        for line in response.iter_lines():
+            if line:
+                event = json.loads(line)
+                self.handle_event(event)
+    
+    def handle_event(self, event):
+        """Handle incoming events"""
+        event_type = event.get('type')
+        
+        if event_type == 'gameStart':
+            game_id = event['game']['id']
+            print(f"Game {game_id} started")
+            # Start a new thread to handle this game
+            Thread(target=self.play_game, args=(game_id,)).start()
+        
+        elif event_type == 'challenge':
+            challenge = event['challenge']
+            print(f"Challenge from {challenge['challenger']['name']}")
+            # Auto-accept challenges (add your own logic here)
+            self.accept_challenge(challenge['id'])
+    
+    def play_game(self, game_id):
+        """Play a single game"""
+        url = f"{self.base_url}/api/bot/game/stream/{game_id}"
+        response = requests.get(url, headers=self.headers, stream=True)
+        
+        board = chess.Board()
+        our_color = None
+        
+        for line in response.iter_lines():
+            if line:
+                event = json.loads(line)
+                
+                if event['type'] == 'gameFull':
+                    # Determine our color
+                    state = event['state']
+                    our_color = self.get_our_color(event)
+                    self.update_board(board, state['moves'])
+                    
+                    if self.is_our_turn(board, our_color):
+                        self.make_best_move(game_id, board)
+                
+                elif event['type'] == 'gameState':
+                    self.update_board(board, event['moves'])
+                    
+                    if event['status'] != 'started':
+                        print(f"Game over: {event['status']}")
+                        break
+                    
+                    if self.is_our_turn(board, our_color):
+                        self.make_best_move(game_id, board)
+                
+                elif event['type'] == 'chatLine':
+                    print(f"Chat: {event['username']}: {event['text']}")
+    
+    def update_board(self, board, moves_str):
+        """Update board with move string"""
+        board.reset()
+        if moves_str:
+            for move in moves_str.split():
+                board.push_uci(move)
+    
+    def get_our_color(self, game_full):
+        """Determine which color we are playing"""
+        # Check if we're white or black based on player IDs
+        # (implementation depends on how you store bot ID)
+        return chess.WHITE  # Simplified
+    
+    def is_our_turn(self, board, our_color):
+        """Check if it's our turn"""
+        return board.turn == our_color
+    
+    def make_best_move(self, game_id, board):
+        """Calculate and make the best move"""
+        result = self.engine.play(board, chess.engine.Limit(time=1.0))
+        move_uci = result.move.uci()
+        
+        url = f"{self.base_url}/api/bot/game/{game_id}/move/{move_uci}"
+        response = requests.post(url, headers=self.headers)
+        
+        if response.status_code == 200:
+            print(f"Played: {move_uci}")
+        else:
+            print(f"Move error: {response.json()}")
+    
+    def accept_challenge(self, challenge_id):
+        """Accept a challenge"""
+        url = f"{self.base_url}/api/challenge/{challenge_id}/accept"
+        requests.post(url, headers=self.headers)
+    
+    def run(self):
+        """Start the bot"""
+        print("Bot starting...")
+        try:
+            self.stream_events()
+        finally:
+            self.engine.quit()
+
+# Run the bot
+if __name__ == "__main__":
+    bot = LichessBot("lip_yourtoken")
+    bot.run()
+```
+</CodeGroup>
+
+---
+
+## Best Practices
+
+### Connection Management
+
+1. **Keep Streams Alive**: The event and game streams are long-lived connections
+2. **Handle Disconnections**: Implement reconnection logic with exponential backoff
+3. **Process Events Quickly**: Don't block the stream processing thread
+4. **Use Threads**: Handle each game in a separate thread
+
+### Performance
+
+1. **Think Time**: Respect time controls and don't take too long to move
+2. **Memory**: Clean up finished games to avoid memory leaks
+3. **Rate Limits**: Avoid making too many API calls
+
+### Fair Play
+
+1. **Engine Strength**: Don't make your bot play at unrealistic strength
+2. **No Unfair Advantage**: Follow Lichess Terms of Service
+3. **Handle Draws**: Respond appropriately to draw offers
+
+---
+
+## See Also
+
+- [Bot Account](/api/bot/account) - Account setup and management
+- [Challenges](/api/bot/challenge) - Handle challenges
+- [Board API](/api-reference/board) - Alternative API for human players

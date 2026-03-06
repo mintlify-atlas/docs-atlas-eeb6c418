@@ -1,0 +1,367 @@
+---
+title: "Export User Games"
+description: "Download all games of a user"
+---
+
+## Export games by user
+
+Download all games of any user in PGN or ndjson format. Games are sorted by reverse chronological order (most recent first).
+
+<Warning>
+  This endpoint streams potentially large amounts of data. Make sure to handle the stream properly and avoid loading everything into memory.
+</Warning>
+
+### Endpoint
+
+```
+GET https://lichess.org/api/games/user/{username}
+```
+
+Also available at:
+```
+GET https://lichess.org/games/export/{username}
+```
+
+### Path Parameters
+
+<ParamField path="username" type="string" required>
+  The username of the player whose games to export
+</ParamField>
+
+### Query Parameters
+
+<ParamField query="since" type="integer">
+  Download games played since this timestamp (in milliseconds)
+</ParamField>
+
+<ParamField query="until" type="integer">
+  Download games played until this timestamp (in milliseconds)
+</ParamField>
+
+<ParamField query="max" type="integer">
+  Maximum number of games to download. Leave empty to download all games.
+</ParamField>
+
+<ParamField query="vs" type="string">
+  Filter games by opponent username
+</ParamField>
+
+<ParamField query="rated" type="boolean">
+  Download only rated (`true`) or casual (`false`) games. Leave empty for both.
+</ParamField>
+
+<ParamField query="perfType" type="string">
+  Filter by speed or variant. Multiple values can be specified, separated by commas.
+  
+  Examples: `blitz,rapid,classical`, `bullet`, `ultraBullet`, `chess960`, `crazyhouse`, `antichess`, `atomic`, `horde`, `kingOfTheHill`, `racingKings`, `threeCheck`
+</ParamField>
+
+<ParamField query="color" type="string">
+  Filter by player color: `white` or `black`
+</ParamField>
+
+<ParamField query="analysed" type="boolean">
+  Download only games with computer analysis available (`true`) or without (`false`). Leave empty for both.
+</ParamField>
+
+<ParamField query="ongoing" type="boolean" default="false">
+  Include ongoing games. Ongoing games will be omitted by default.
+</ParamField>
+
+<ParamField query="finished" type="boolean" default="true">
+  Include finished games. Set to `false` to only get ongoing games.
+</ParamField>
+
+<ParamField query="moves" type="boolean" default="true">
+  Include the PGN moves
+</ParamField>
+
+<ParamField query="pgnInJson" type="boolean" default="false">
+  Include the full PGN within the JSON response (only for ndjson format)
+</ParamField>
+
+<ParamField query="tags" type="boolean" default="true">
+  Include the PGN tags
+</ParamField>
+
+<ParamField query="clocks" type="boolean" default="false">
+  Include clock comments in the PGN moves when available. This makes the response significantly larger.
+</ParamField>
+
+<ParamField query="evals" type="boolean" default="true">
+  Include analysis evaluation comments in the PGN when available
+</ParamField>
+
+<ParamField query="accuracy" type="boolean" default="false">
+  Include accuracy percent of each player when available
+</ParamField>
+
+<ParamField query="opening" type="boolean" default="false">
+  Include the opening name
+</ParamField>
+
+<ParamField query="division" type="boolean" default="false">
+  Include the division data (plies of opening, middlegame, endgame)
+</ParamField>
+
+<ParamField query="literate" type="boolean" default="false">
+  Insert textual annotations in the PGN about the opening, analysis variations, mistakes, and game termination
+</ParamField>
+
+<ParamField query="sort" type="string" default="dateDesc">
+  Sort order: `dateAsc` (oldest first) or `dateDesc` (newest first)
+</ParamField>
+
+### Request Headers
+
+<ParamField header="Accept" type="string">
+  Specify the response format:
+  - `application/x-chess-pgn` or `application/pgn` for PGN format (default)
+  - `application/x-ndjson` for newline-delimited JSON
+</ParamField>
+
+### Example Requests
+
+#### Download all blitz games as PGN
+
+```bash
+curl -X GET \
+  "https://lichess.org/api/games/user/DrNykterstein?perfType=blitz&max=100" \
+  -H "Accept: application/x-chess-pgn"
+```
+
+#### Download rated games against a specific opponent
+
+```bash
+curl -X GET \
+  "https://lichess.org/api/games/user/DrNykterstein?vs=Hikaru&rated=true" \
+  -H "Accept: application/x-ndjson"
+```
+
+#### Download recent games with analysis
+
+```bash
+curl -X GET \
+  "https://lichess.org/api/games/user/DrNykterstein?since=1704067200000&analysed=true&evals=true" \
+  -H "Accept: application/x-chess-pgn"
+```
+
+### Response Formats
+
+#### PGN Format
+
+When `Accept: application/x-chess-pgn` is specified, games are returned in standard PGN format:
+
+```pgn
+[Event "Rated Blitz game"]
+[Site "https://lichess.org/abc123xyz"]
+[Date "2024.02.26"]
+[White "DrNykterstein"]
+[Black "Hikaru"]
+[Result "1-0"]
+[UTCDate "2024.02.26"]
+[UTCTime "14:30:45"]
+[WhiteElo "3003"]
+[BlackElo "2987"]
+[WhiteRatingDiff "+6"]
+[BlackRatingDiff "-6"]
+[Variant "Standard"]
+[TimeControl "180+0"]
+[ECO "C65"]
+[Opening "Ruy Lopez: Berlin Defense"]
+[Termination "Normal"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 Nf6 4. O-O Nxe4 5. d4 Nd6 6. Bxc6 dxc6 7. dxe5 Nf5 8. Qxd8+ Kxd8 1-0
+
+
+[Event "Rated Rapid game"]
+[Site "https://lichess.org/def456uvw"]
+...
+```
+
+#### NDJSON Format
+
+When `Accept: application/x-ndjson` is specified, each game is a JSON object on a separate line:
+
+```json
+{"id":"abc123xyz","rated":true,"variant":"standard","speed":"blitz","perf":"blitz","createdAt":1708959045000,"lastMoveAt":1708959380000,"status":"mate","players":{"white":{"user":{"name":"DrNykterstein","id":"drnykterstein"},"rating":3003,"ratingDiff":6},"black":{"user":{"name":"Hikaru","id":"hikaru"},"rating":2987,"ratingDiff":-6}},"winner":"white","opening":{"eco":"C65","name":"Ruy Lopez: Berlin Defense","ply":6},"moves":"e4 e5 Nf3 Nc6 Bb5 Nf6 O-O Nxe4 d4 Nd6 Bxc6 dxc6 dxe5 Nf5 Qxd8+ Kxd8","clock":{"initial":180,"increment":0,"totalTime":180}}
+{"id":"def456uvw","rated":true,"variant":"standard","speed":"rapid",...}
+```
+
+### NDJSON Response Fields
+
+<ResponseField name="id" type="string">
+  Game ID
+</ResponseField>
+
+<ResponseField name="rated" type="boolean">
+  Whether the game was rated
+</ResponseField>
+
+<ResponseField name="variant" type="string">
+  Game variant (standard, chess960, crazyhouse, etc.)
+</ResponseField>
+
+<ResponseField name="speed" type="string">
+  Game speed (ultraBullet, bullet, blitz, rapid, classical, correspondence)
+</ResponseField>
+
+<ResponseField name="perf" type="string">
+  Performance type used for rating
+</ResponseField>
+
+<ResponseField name="createdAt" type="integer">
+  Game creation timestamp in milliseconds
+</ResponseField>
+
+<ResponseField name="lastMoveAt" type="integer">
+  Timestamp of the last move in milliseconds
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Game status: `created`, `started`, `aborted`, `mate`, `resign`, `stalemate`, `timeout`, `draw`, `outoftime`, `cheat`, `noStart`, `unknownFinish`, `variantEnd`
+</ResponseField>
+
+<ResponseField name="players" type="object">
+  Information about both players
+  
+  <Expandable title="Player object">
+    <ResponseField name="white" type="object">
+      White player information
+      
+      <Expandable title="White player">
+        <ResponseField name="user" type="object">
+          User information (name, id, title)
+        </ResponseField>
+        
+        <ResponseField name="rating" type="integer">
+          Player's rating before the game
+        </ResponseField>
+        
+        <ResponseField name="ratingDiff" type="integer">
+          Rating change after the game
+        </ResponseField>
+        
+        <ResponseField name="analysis" type="object">
+          Player's analysis (if `accuracy=true`)
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    
+    <ResponseField name="black" type="object">
+      Black player information (same structure as white)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="winner" type="string">
+  Game winner: `white` or `black` (absent for draws)
+</ResponseField>
+
+<ResponseField name="opening" type="object">
+  Opening information (if `opening=true`)
+  
+  <Expandable title="Opening">
+    <ResponseField name="eco" type="string">
+      ECO code
+    </ResponseField>
+    
+    <ResponseField name="name" type="string">
+      Opening name
+    </ResponseField>
+    
+    <ResponseField name="ply" type="integer">
+      Number of plies in the opening
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="moves" type="string">
+  Game moves in UCI or SAN format (if `moves=true`)
+</ResponseField>
+
+<ResponseField name="pgn" type="string">
+  Full PGN of the game (if `pgnInJson=true`)
+</ResponseField>
+
+<ResponseField name="clock" type="object">
+  Clock configuration
+  
+  <Expandable title="Clock">
+    <ResponseField name="initial" type="integer">
+      Initial time in seconds
+    </ResponseField>
+    
+    <ResponseField name="increment" type="integer">
+      Increment in seconds
+    </ResponseField>
+    
+    <ResponseField name="totalTime" type="integer">
+      Estimated total game time
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="tournament" type="string">
+  Tournament ID if the game was part of a tournament
+</ResponseField>
+
+<ResponseField name="division" type="object">
+  Game phase division (if `division=true`)
+  
+  <Expandable title="Division">
+    <ResponseField name="opening" type="integer">
+      Ply where opening ends
+    </ResponseField>
+    
+    <ResponseField name="middle" type="integer">
+      Ply where middlegame ends
+    </ResponseField>
+    
+    <ResponseField name="end" type="integer">
+      Ply where endgame starts
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Rate Limiting
+
+Rate limits depend on:
+- Whether you're authenticated
+- Whether you're requesting your own games
+- Your OAuth token's rate limit
+- Whether you're verified
+
+Typical limits:
+- **Authenticated users (own games)**: ~60 games per second
+- **OAuth requests**: ~30 games per second  
+- **Anonymous requests**: ~25 games per second
+
+<Tip>
+  Use OAuth authentication to get higher rate limits and access private game data.
+</Tip>
+
+### Streaming Best Practices
+
+1. **Process line by line**: Don't load the entire response into memory
+2. **Handle disconnections**: Implement retry logic with exponential backoff
+3. **Use compression**: The server supports gzip compression
+4. **Respect rate limits**: Space out your requests appropriately
+
+### Example: Processing Streamed Games
+
+```python
+import requests
+import json
+
+url = "https://lichess.org/api/games/user/DrNykterstein"
+headers = {"Accept": "application/x-ndjson"}
+
+with requests.get(url, headers=headers, stream=True) as response:
+    response.raise_for_status()
+    for line in response.iter_lines():
+        if line:
+            game = json.loads(line)
+            print(f"Game {game['id']}: {game['speed']} - {game['status']}")
+            # Process each game...
+```

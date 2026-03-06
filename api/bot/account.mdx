@@ -1,0 +1,294 @@
+---
+title: Bot Account
+description: Upgrade and manage bot accounts on Lichess
+---
+
+## Upgrade to Bot Account
+
+<Note>
+Bot accounts must be used with API access tokens and cannot play using the web interface.
+</Note>
+
+### POST /api/bot/account/upgrade
+
+Upgrade your account to a bot account. Once upgraded, the account can:
+- Play games using the Bot API
+- Connect to the event stream for incoming challenges
+- Make moves programmatically via API
+
+<Warning>
+This action is **irreversible**. Bot accounts:
+- Cannot play games via the web interface
+- Cannot participate in tournaments (unless specifically for bots)
+- Cannot join teams after upgrading
+- Will be automatically withdrawn from all tournaments and Swiss events
+</Warning>
+
+#### Authentication
+
+Requires OAuth token with `bot:play` scope.
+
+#### Request
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://lichess.org/api/bot/account/upgrade \
+  -H "Authorization: Bearer <your_token>"
+```
+
+```python Python
+import requests
+
+token = "lip_yourtoken"
+headers = {"Authorization": f"Bearer {token}"}
+
+response = requests.post(
+    "https://lichess.org/api/bot/account/upgrade",
+    headers=headers
+)
+
+print(response.json())
+```
+
+```javascript JavaScript
+const token = "lip_yourtoken";
+
+fetch("https://lichess.org/api/bot/account/upgrade", {
+  method: "POST",
+  headers: {
+    "Authorization": `Bearer ${token}`
+  }
+})
+.then(res => res.json())
+.then(data => console.log(data));
+```
+</CodeGroup>
+
+#### Response
+
+<ResponseField name="ok" type="boolean">
+  Success status
+</ResponseField>
+
+<CodeGroup>
+```json Success (200)
+{
+  "ok": true
+}
+```
+
+```json Error (400)
+{
+  "error": "Managed accounts cannot be bots."
+}
+```
+</CodeGroup>
+
+#### What Happens on Upgrade
+
+1. **Tournament Withdrawal**: Automatically withdraws from all active tournaments
+2. **Swiss Withdrawal**: Withdraws from all Swiss tournaments
+3. **Streamer Status**: Removes streamer status if present
+4. **Team Membership**: Existing team memberships remain, but cannot join new teams
+5. **Preferences**: Bot-specific preferences are applied
+6. **User Cache**: Light user cache is invalidated
+
+---
+
+## Get Bot Account Info
+
+### GET /api/account
+
+Get the profile information for the authenticated bot account.
+
+<Info>
+Avoid polling this endpoint. Use [GET /api/stream/event](/api/bot/playing#stream-events) instead to receive real-time updates.
+</Info>
+
+#### Authentication
+
+Requires OAuth token with any scope.
+
+#### Request
+
+<CodeGroup>
+```bash cURL
+curl https://lichess.org/api/account \
+  -H "Authorization: Bearer <your_token>"
+```
+
+```python Python
+import requests
+
+token = "lip_yourtoken"
+headers = {"Authorization": f"Bearer {token}"}
+
+response = requests.get(
+    "https://lichess.org/api/account",
+    headers=headers
+)
+
+profile = response.json()
+print(f"Username: {profile['username']}")
+print(f"Is Bot: {profile.get('title') == 'BOT'}")
+```
+</CodeGroup>
+
+#### Response
+
+<ResponseField name="id" type="string">
+  User ID (lowercase username)
+</ResponseField>
+
+<ResponseField name="username" type="string">
+  Display username
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  User title (will be "BOT" for bot accounts)
+</ResponseField>
+
+<ResponseField name="online" type="boolean">
+  Whether the user is currently online
+</ResponseField>
+
+<ResponseField name="perfs" type="object">
+  Performance ratings for each game variant and time control
+</ResponseField>
+
+<ResponseField name="createdAt" type="integer">
+  Account creation timestamp (milliseconds since epoch)
+</ResponseField>
+
+<ResponseField name="profile" type="object">
+  User profile information
+</ResponseField>
+
+<CodeGroup>
+```json Response (200)
+{
+  "id": "mybot",
+  "username": "MyBot",
+  "title": "BOT",
+  "online": true,
+  "perfs": {
+    "blitz": {
+      "games": 2340,
+      "rating": 1681,
+      "rd": 30,
+      "prog": 10
+    },
+    "rapid": {
+      "games": 340,
+      "rating": 1756,
+      "rd": 45,
+      "prog": -5
+    }
+  },
+  "createdAt": 1290415680000,
+  "profile": {
+    "country": "US",
+    "bio": "Powered by Stockfish 16"
+  },
+  "seenAt": 1710331200000,
+  "playTime": {
+    "total": 3296340,
+    "tv": 12340
+  },
+  "url": "https://lichess.org/@/MyBot",
+  "count": {
+    "all": 9265,
+    "rated": 7157,
+    "ai": 0,
+    "draw": 340,
+    "drawH": 331,
+    "loss": 4480,
+    "lossH": 4207,
+    "win": 4445,
+    "winH": 4378
+  }
+}
+```
+</CodeGroup>
+
+---
+
+## Best Practices
+
+### Bot Account Guidelines
+
+1. **Fair Play**: Ensure your bot follows Lichess Terms of Service
+2. **Engine Attribution**: Clearly state which engine your bot uses in the profile
+3. **Rate Limiting**: Respect API rate limits to avoid being throttled
+4. **Connection Management**: Use persistent connections for event streams
+5. **Graceful Shutdown**: Handle disconnections and reconnect appropriately
+
+### Error Handling
+
+Always check response status codes:
+- `200` - Success
+- `400` - Bad request (e.g., managed account cannot be bot)
+- `401` - Unauthorized (invalid or missing token)
+- `429` - Too many requests (rate limited)
+
+### Example: Complete Bot Setup
+
+<CodeGroup>
+```python Python
+import requests
+import time
+
+class LichessBot:
+    def __init__(self, token):
+        self.token = token
+        self.headers = {"Authorization": f"Bearer {token}"}
+        self.base_url = "https://lichess.org"
+    
+    def upgrade_to_bot(self):
+        """Upgrade account to bot (irreversible!)"""
+        response = requests.post(
+            f"{self.base_url}/api/bot/account/upgrade",
+            headers=self.headers
+        )
+        
+        if response.status_code == 200:
+            print("Successfully upgraded to bot account")
+            return True
+        else:
+            print(f"Upgrade failed: {response.json()}")
+            return False
+    
+    def get_profile(self):
+        """Get bot account profile"""
+        response = requests.get(
+            f"{self.base_url}/api/account",
+            headers=self.headers
+        )
+        
+        if response.status_code == 200:
+            profile = response.json()
+            print(f"Bot: {profile['username']}")
+            print(f"Rating (blitz): {profile['perfs']['blitz']['rating']}")
+            return profile
+        else:
+            print(f"Failed to get profile: {response.status_code}")
+            return None
+
+# Usage
+bot = LichessBot("lip_yourtoken")
+
+# First time setup - uncomment to upgrade
+# bot.upgrade_to_bot()
+
+# Get bot info
+profile = bot.get_profile()
+```
+</CodeGroup>
+
+---
+
+## See Also
+
+- [Playing Games](/api/bot/playing) - Connect to games and make moves
+- [Challenges](/api/bot/challenge) - Handle incoming challenges
+- [OAuth](/api-reference/oauth) - Authentication and scopes

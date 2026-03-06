@@ -1,0 +1,582 @@
+---
+title: Deployment Architecture
+description: Production infrastructure, scaling, and deployment strategies
+---
+
+## Overview
+
+Lichess serves **millions of daily active users** from a lean infrastructure. The production architecture emphasizes horizontal scaling, caching, and geographic distribution to handle massive traffic while maintaining low latency.
+
+## High-Level Architecture
+
+```
+                    ┌─────────────┐
+                    │     CDN     │  (Assets, images, JS, CSS)
+                    │  (Fastly)   │
+                    └─────────────┘
+                           ↓
+┌──────────┐        ┌─────────────┐
+│ Browser  │───────→│    nginx    │  (Load balancer, TLS termination)
+└──────────┘        └──────┬──────┘
+                           ↓
+              ┌────────────┴────────────┐
+              ↓                         ↓
+       ┌─────────────┐          ┌─────────────┐
+       │ lila (HTTP) │          │   lila-ws   │  (WebSocket)
+       │  Scala 3    │          │   Scala 3   │
+       │ (Multiple)  │          │ (Multiple)  │
+       └──────┬──────┘          └──────┬──────┘
+              │                        │
+              ├────────────────────────┤
+              ↓                        ↓
+       ┌─────────────┐          ┌─────────────┐
+       │   MongoDB   │          │    Redis    │  (Pub/sub, cache)
+       │  (Cluster)  │          │  (Cluster)  │
+       └──────┬──────┘          └─────────────┘
+              ↓
+       ┌─────────────┐
+       │Elasticsearch│  (Search indexing)
+       └─────────────┘
+```
+
+## Server Infrastructure
+
+### Application Servers (lila)
+
+Multiple Scala application servers handle HTTP requests:
+
+**Configuration**:
+- **Count**: 4-6 instances (varies with load)
+- **CPU**: 8-16 cores per instance
+- **Memory**: 16-32 GB RAM
+- **JVM**: Java 21+ with optimized GC settings
+
+**JVM Tuning**:
+```bash
+# build.sbt default settings
+javaOptions ++= Seq(
+  "-Xms64m",           # Min heap (dev)
+  "-Xmx512m",          # Max heap (dev)
+  "-Dlogger.file=conf/logger.dev.xml"
+)
+
+# Production settings (via systemd or container)
+-Xms4G               # Min heap: 4GB
+-Xmx8G               # Max heap: 8GB
+-XX:+UseG1GC         # G1 garbage collector
+-XX:MaxGCPauseMillis=200
+-XX:+UseStringDeduplication
+```
+
+### WebSocket Servers (lila-ws)
+
+**Configuration**:
+- **Count**: 3-5 instances
+- **CPU**: 4-8 cores
+- **Memory**: 8-16 GB
+- **Connections**: 100k+ per instance
+
+**Load Balancing**:
+- nginx with sticky sessions (optional)
+- Round-robin with failover
+- Client auto-reconnect on node failure
+
+### Nginx Configuration
+
+Frontend load balancer and reverse proxy:
+
+```nginx
+upstream lila_http {
+    server lila1.lichess.ovh:9663;
+    server lila2.lichess.ovh:9663;
+    server lila3.lichess.ovh:9663;
+    server lila4.lichess.ovh:9663;
+}
+
+upstream lila_ws {
+    server ws1.lichess.ovh:9664;
+    server ws2.lichess.ovh:9664;
+    server ws3.lichess.ovh:9664;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name lichess.org;
+    
+    # TLS configuration
+    ssl_certificate /etc/letsencrypt/live/lichess.org/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/lichess.org/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    
+    # HTTP requests
+    location / {
+        proxy_pass http://lila_http;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    
+    # WebSocket connections
+    location /socket/ {
+        proxy_pass http://lila_ws;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 86400s;
+    }
+    
+    # Static assets (bypass app servers)
+    location /assets/ {
+        root /var/www/public;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+}
+```
+
+## Database Infrastructure
+
+### MongoDB Cluster
+
+**Topology**: Replica set with 3+ nodes
+
+```
+┌─────────────┐
+│   Primary   │  (Handles all writes)
+└──────┬──────┘
+       │ Replication
+       ├──────────────────┐
+       ↓                  ↓
+┌─────────────┐    ┌─────────────┐
+│ Secondary 1 │    │ Secondary 2 │  (Read replicas)
+└─────────────┘    └─────────────┘
+```
+
+**Configuration**:
+- **Storage**: 4+ TB SSD per node (4.7B+ games)
+- **RAM**: 64-128 GB (for working set cache)
+- **Write Concern**: `w:1` (primary acknowledged)
+- **Read Preference**: `primaryPreferred` (use secondaries when primary busy)
+
+**Sharding**: Not currently used (single replica set handles load)
+
+### Redis Cluster
+
+**Purpose**:
+- WebSocket pub/sub (lila ↔ lila-ws)
+- Session storage
+- Rate limiting
+- Temporary caching
+
+**Configuration**:
+- **Count**: 3 nodes (master + 2 replicas)
+- **Memory**: 16-32 GB per node
+- **Persistence**: RDB snapshots + AOF
+- **Eviction**: LRU for cache entries
+
+**High Availability**:
+- Redis Sentinel monitors cluster health
+- Automatic failover to replica on master failure
+- Sub-second failover time
+
+### Elasticsearch
+
+**Purpose**: Full-text search for games, studies, forums
+
+**Configuration**:
+- **Count**: 3 nodes (for redundancy)
+- **Storage**: 1+ TB per node
+- **Indexes**: `game`, `study`, `forum`, `team`
+
+**Indexing Strategy**:
+- MongoDB change streams trigger Elasticsearch updates
+- Async indexing (eventual consistency)
+- Periodic full reindex for consistency
+
+## CDN and Asset Delivery
+
+### Fastly CDN
+
+Lichess uses [Fastly](https://www.fastly.com/) for global content delivery:
+
+**Cached Assets**:
+- JavaScript bundles (`/compiled/*.js`)
+- CSS stylesheets
+- Images (board themes, pieces)
+- Fonts
+- Static resources
+
+**Configuration**:
+```vcl
+# Fastly VCL configuration
+sub vcl_recv {
+  # Cache hashed assets forever
+  if (req.url ~ "^/assets/[a-zA-Z0-9_-]{8}/") {
+    set req.http.X-Long-TTL = "true";
+  }
+}
+
+sub vcl_fetch {
+  if (req.http.X-Long-TTL) {
+    set beresp.ttl = 365d;
+    set beresp.http.Cache-Control = "public, max-age=31536000, immutable";
+  }
+}
+```
+
+**Benefits**:
+- **Global edge network**: 70+ POPs worldwide
+- **Low latency**: Assets served from nearby edge
+- **Origin shield**: Reduces backend load
+- **Instant purge**: Purge cache on deployment
+
+### Asset Versioning
+
+Content-hashed URLs enable aggressive caching:
+
+```html
+<!-- Old version cached for 1 year -->
+<script src="/assets/analyse.a1b2c3d4.js"></script>
+
+<!-- New deployment gets new hash -->
+<script src="/assets/analyse.e5f6g7h8.js"></script>
+```
+
+Process:
+1. `ui/build` generates hashed filenames
+2. Manifest maps logical names to hashed URLs
+3. Server injects correct URLs in HTML
+4. Browsers cache assets until hash changes
+
+## Deployment Process
+
+### Build and Package
+
+```bash
+# Build Scala application
+./lila.sh stage
+
+# Builds to target/universal/stage/
+# Contains:
+# - bin/lila (startup script)
+# - lib/*.jar (dependencies)
+# - conf/ (configuration)
+
+# Build frontend assets
+cd ui
+./build
+
+# Generates:
+# - public/compiled/*.js (JavaScript bundles)
+# - public/compiled/*.css (Stylesheets)
+# - public/compiled/manifest.*.json (Asset manifest)
+```
+
+### Deployment Strategy
+
+**Rolling deployment** with zero downtime:
+
+```bash
+# 1. Deploy new version to one instance
+systemctl stop lila@1
+cp -r /tmp/lila-new /opt/lila/
+systemctl start lila@1
+
+# 2. Verify health
+curl http://lila1:9663/health
+
+# 3. If healthy, deploy to remaining instances
+for i in 2 3 4; do
+  systemctl stop lila@$i
+  cp -r /tmp/lila-new /opt/lila/
+  systemctl start lila@$i
+  sleep 30  # Wait for startup
+done
+
+# 4. Purge CDN cache
+curl -X POST https://api.fastly.com/service/$SERVICE_ID/purge_all \
+  -H "Fastly-Key: $FASTLY_KEY"
+```
+
+### Systemd Service
+
+```ini
+# /etc/systemd/system/lila@.service
+[Unit]
+Description=Lila Chess Server (instance %i)
+After=network.target mongodb.service redis.service
+
+[Service]
+Type=simple
+User=lila
+WorkingDirectory=/opt/lila
+ExecStart=/opt/lila/bin/lila \
+  -Dconfig.file=/etc/lila/application.conf \
+  -Dlogger.file=/etc/lila/logger.xml \
+  -Xms4G -Xmx8G -XX:+UseG1GC
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### Configuration Management
+
+Production configuration in `/etc/lila/application.conf`:
+
+```hocon
+include "base.conf"
+
+http.port = 9663
+
+mongodb {
+  uri = "mongodb://mongo1:27017,mongo2:27017,mongo3:27017/lichess?replicaSet=rs0"
+}
+
+redis {
+  uri = "redis://redis-sentinel:26379"
+}
+
+net {
+  domain = "lichess.org"
+  socket.domains = ["socket.lichess.org"]
+  asset.domain = "lichess1.org"  # CDN domain
+  base_url = "https://lichess.org"
+}
+
+akka {
+  actor {
+    default-dispatcher.fork-join-executor {
+      parallelism-max = 128  # More threads for production
+    }
+  }
+}
+```
+
+## Monitoring and Observability
+
+### Metrics Collection
+
+**Kamon** exports metrics to InfluxDB:
+
+```scala
+// Application metrics
+Kamon.counter("game.started").increment()
+Kamon.histogram("http.request.duration").record(duration)
+Kamon.gauge("users.online").update(onlineCount)
+```
+
+**System metrics**:
+- CPU, memory, disk usage
+- JVM heap, GC pauses
+- HTTP request rate, latency
+- Database query time
+- Redis operations
+- WebSocket connection count
+
+### Grafana Dashboards
+
+Real-time monitoring dashboards:
+
+- **System Overview**: CPU, memory, network across all nodes
+- **Application**: Request rate, latency percentiles, error rate
+- **Games**: Active games, moves/second, game starts
+- **Users**: Online count, registrations, logins
+- **Database**: Query time, connection pool, replication lag
+- **WebSocket**: Connections, message rate, disconnects
+
+### Alerting
+
+**PagerDuty** integration for critical alerts:
+
+- HTTP 5xx error rate > threshold
+- Response time p99 > threshold
+- Database replica lag > threshold
+- Redis disconnections
+- Disk space < threshold
+- Application crashes
+
+### Logging
+
+**Structured logging** with Logback:
+
+```scala
+logger.info(s"Game ${game.id} started: ${game.players}")
+logger.error(s"Failed to save game ${game.id}", exception)
+```
+
+**Log aggregation**:
+- Centralized log collection (e.g., ELK stack)
+- Structured JSON logs
+- Search by game ID, user ID, error type
+- Alert on specific log patterns
+
+## Scaling Considerations
+
+### Horizontal Scaling
+
+<Accordion title="Application Servers (lila)">
+
+**Easy to scale**: Stateless application servers
+
+```bash
+# Add new instance
+systemctl start lila@5
+
+# Add to nginx upstream
+nginx -s reload
+```
+
+No coordination needed between instances.
+
+</Accordion>
+
+<Accordion title="WebSocket Servers (lila-ws)">
+
+**Easy to scale**: Independent connection handlers
+
+```bash
+# Add new WebSocket server
+systemctl start lila-ws@4
+
+# Add to nginx upstream
+nginx -s reload
+```
+
+Redis pub/sub coordinates message delivery.
+
+</Accordion>
+
+<Accordion title="Database (MongoDB)">
+
+**Vertical scaling**: Increase CPU/RAM on existing nodes
+
+**Read scaling**: Add read replicas for read-heavy workloads
+
+**Write scaling**: Consider sharding if write load exceeds single primary capacity (not yet needed)
+
+</Accordion>
+
+<Accordion title="Redis">
+
+**Vertical scaling**: Increase memory for more cache
+
+**Read scaling**: Add replicas and use read commands from replicas
+
+**Partitioning**: Separate Redis instances for different use cases (pub/sub vs. cache)
+
+</Accordion>
+
+### Performance Optimization
+
+**Connection pooling**:
+- HTTP client connection pools
+- Database connection pools
+- Redis connection pools
+
+**Caching layers**:
+- In-memory (Scaffeine) for hot data
+- Redis for distributed cache
+- CDN for static assets
+
+**Async processing**:
+- All I/O operations non-blocking
+- Akka Streams for backpressure
+- Queue background jobs
+
+## Security
+
+### TLS/HTTPS
+
+- **Certificate**: Let's Encrypt with auto-renewal
+- **Protocols**: TLS 1.2, TLS 1.3 only
+- **Ciphers**: Modern ciphers (AEAD, forward secrecy)
+- **HSTS**: Strict-Transport-Security header
+
+### Rate Limiting
+
+```scala
+// modules/web/src/main/RateLimit.scala
+val loginRateLimit = RateLimit(
+  credits = 5,
+  duration = 1.minute,
+  key = "login.username"
+)
+
+if (!loginRateLimit.isAllowed(username))
+  TooManyRequests("Too many login attempts")
+```
+
+Rate limits enforced for:
+- Login attempts
+- API requests
+- Game creation
+- Chat messages
+
+### DDoS Protection
+
+- **CDN**: Fastly provides DDoS mitigation
+- **nginx**: Connection limits, request rate limits
+- **Application**: Per-IP rate limiting
+
+### Proxy Detection
+
+**IP2Proxy database** detects proxies/VPNs:
+- Flag suspicious IPs
+- Additional verification for proxied users
+- Anti-cheat measures
+
+## Disaster Recovery
+
+### Backups
+
+**MongoDB**:
+- Daily snapshots retained for 30 days
+- Oplog backup for point-in-time recovery
+- Geo-distributed backups
+
+**Redis**:
+- RDB snapshots every 5 minutes
+- AOF append-only file for durability
+
+**Configuration**:
+- Version controlled in Git
+- Encrypted secrets management
+
+### Recovery Procedures
+
+**Database restore**:
+```bash
+# Restore from snapshot
+mongorestore --host mongo1 --archive=/backup/lichess-2024-01-01.archive.gz
+
+# Replay oplog for point-in-time
+mongorestore --oplogReplay --oplogLimit=1704153600
+```
+
+**Application rollback**:
+```bash
+# Revert to previous version
+systemctl stop lila@{1..4}
+cp -r /opt/lila-previous /opt/lila
+systemctl start lila@{1..4}
+```
+
+## Cost Optimization
+
+Lichess operates on donations and minimizes costs:
+
+- **No Kubernetes**: Simple systemd services reduce overhead
+- **Bare metal**: Owned servers vs. cloud reduces costs
+- **Efficient encoding**: Game compression saves storage
+- **CDN offloading**: Reduces origin bandwidth
+- **Donated infrastructure**: Some servers donated by community
+
+## See Also
+
+- [Backend Architecture](/architecture/backend) - Application structure
+- [Frontend Architecture](/architecture/frontend) - UI build and deployment
+- [Database Architecture](/architecture/database) - Data storage details
+- [WebSocket Architecture](/architecture/websockets) - Real-time infrastructure

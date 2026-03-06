@@ -1,0 +1,917 @@
+---
+title: Challenges
+description: Create, accept, and decline challenges as a bot
+---
+
+## Overview
+
+Bots can create challenges to other players, and receive and respond to challenges from other players. Challenges are received through the [event stream](/api/bot/playing#stream-events).
+
+---
+
+## Accept a Challenge
+
+### POST /api/challenge/{challengeId}/accept
+
+Accept an incoming challenge.
+
+#### Authentication
+
+Requires OAuth token with `challenge:write`, `bot:play`, or `board:play` scope.
+
+#### Parameters
+
+<ParamField path="challengeId" type="string" required>
+  The challenge ID received from the event stream
+</ParamField>
+
+<ParamField query="color" type="string">
+  Accept the challenge and request a specific color: `white` or `black`. If not specified, color is random.
+</ParamField>
+
+#### Request
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://lichess.org/api/challenge/kZ4Zs7cN/accept \
+  -H "Authorization: Bearer <your_token>"
+
+# Request white
+curl -X POST "https://lichess.org/api/challenge/kZ4Zs7cN/accept?color=white" \
+  -H "Authorization: Bearer <your_token>"
+```
+
+```python Python
+import requests
+
+def accept_challenge(challenge_id, token, color=None):
+    headers = {"Authorization": f"Bearer {token}"}
+    url = f"https://lichess.org/api/challenge/{challenge_id}/accept"
+    
+    params = {}
+    if color:
+        params['color'] = color
+    
+    response = requests.post(url, headers=headers, params=params)
+    
+    if response.status_code == 200:
+        print(f"Challenge {challenge_id} accepted")
+        return True
+    else:
+        error = response.json()
+        print(f"Error: {error.get('error', 'Unknown error')}")
+        return False
+
+# Accept with random color
+accept_challenge("kZ4Zs7cN", "lip_yourtoken")
+
+# Accept and request white
+accept_challenge("kZ4Zs7cN", "lip_yourtoken", color="white")
+```
+
+```javascript JavaScript
+const token = "lip_yourtoken";
+
+async function acceptChallenge(challengeId, color = null) {
+  const url = new URL(`https://lichess.org/api/challenge/${challengeId}/accept`);
+  if (color) {
+    url.searchParams.append('color', color);
+  }
+  
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${token}` }
+  });
+  
+  if (response.ok) {
+    console.log("Challenge accepted");
+    return await response.json();
+  } else {
+    const error = await response.json();
+    console.error("Error:", error);
+    throw error;
+  }
+}
+
+await acceptChallenge("kZ4Zs7cN");
+```
+</CodeGroup>
+
+#### Response
+
+<ResponseField name="ok" type="boolean">
+  Success status
+</ResponseField>
+
+<CodeGroup>
+```json Success (200)
+{
+  "ok": true
+}
+```
+
+```json Error (400)
+{
+  "error": "This bot already has 5 ongoing games"
+}
+```
+</CodeGroup>
+
+#### Rate Limits
+
+Bots can accept challenges but are subject to:
+- Maximum concurrent games (typically 5 for bots)
+- Opponent-specific limits to prevent spam
+
+---
+
+## Decline a Challenge
+
+### POST /api/challenge/{challengeId}/decline
+
+Decline an incoming challenge.
+
+#### Authentication
+
+Requires OAuth token with `challenge:write`, `bot:play`, or `board:play` scope.
+
+#### Parameters
+
+<ParamField path="challengeId" type="string" required>
+  The challenge ID to decline
+</ParamField>
+
+<ParamField body="reason" type="string">
+  Reason for declining. Options:
+  - `generic` - No specific reason
+  - `later` - Will play later
+  - `tooFast` - Time control too fast
+  - `tooSlow` - Time control too slow
+  - `timeControl` - Don't like the time control
+  - `rated` - Don't want to play rated
+  - `casual` - Don't want to play casual
+  - `standard` - Only play standard chess
+  - `variant` - Don't play this variant
+  - `noBot` - Don't play with bots
+  - `onlyBot` - Only play with bots
+</ParamField>
+
+#### Request
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://lichess.org/api/challenge/kZ4Zs7cN/decline \
+  -H "Authorization: Bearer <your_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"reason":"later"}'
+```
+
+```python Python
+import requests
+
+def decline_challenge(challenge_id, token, reason="generic"):
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+    url = f"https://lichess.org/api/challenge/{challenge_id}/decline"
+    data = {"reason": reason}
+    
+    response = requests.post(url, headers=headers, json=data)
+    
+    if response.status_code == 200:
+        print(f"Challenge {challenge_id} declined")
+        return True
+    else:
+        print(f"Error declining challenge")
+        return False
+
+# Decline with reason
+decline_challenge("kZ4Zs7cN", "lip_yourtoken", reason="tooFast")
+```
+</CodeGroup>
+
+#### Response
+
+<ResponseField name="ok" type="boolean">
+  Success status
+</ResponseField>
+
+<CodeGroup>
+```json Success (200)
+{
+  "ok": true
+}
+```
+</CodeGroup>
+
+---
+
+## Cancel a Challenge
+
+### POST /api/challenge/{challengeId}/cancel
+
+Cancel a challenge that you created.
+
+#### Authentication
+
+Requires OAuth token with `challenge:write`, `bot:play`, or `board:play` scope.
+
+#### Parameters
+
+<ParamField path="challengeId" type="string" required>
+  The challenge ID to cancel
+</ParamField>
+
+<ParamField query="opponentToken" type="string">
+  OAuth token of the opponent (only needed for special cases)
+</ParamField>
+
+#### Request
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://lichess.org/api/challenge/kZ4Zs7cN/cancel \
+  -H "Authorization: Bearer <your_token>"
+```
+
+```python Python
+import requests
+
+def cancel_challenge(challenge_id, token):
+    headers = {"Authorization": f"Bearer {token}"}
+    url = f"https://lichess.org/api/challenge/{challenge_id}/cancel"
+    
+    response = requests.post(url, headers=headers)
+    return response.status_code == 200
+
+cancel_challenge("kZ4Zs7cN", "lip_yourtoken")
+```
+</CodeGroup>
+
+#### Response
+
+<CodeGroup>
+```json Success (200)
+{
+  "ok": true
+}
+```
+</CodeGroup>
+
+---
+
+## Create a Challenge
+
+### POST /api/challenge/{username}
+
+Challenge another player to a game.
+
+#### Authentication
+
+Requires OAuth token with `challenge:write`, `bot:play`, or `board:play` scope.
+
+#### Parameters
+
+<ParamField path="username" type="string" required>
+  Username of the player to challenge
+</ParamField>
+
+<ParamField body="rated" type="boolean" default="false">
+  Whether the game should be rated
+</ParamField>
+
+<ParamField body="clock.limit" type="integer">
+  Clock initial time in seconds (for real-time games)
+</ParamField>
+
+<ParamField body="clock.increment" type="integer">
+  Clock increment in seconds (for real-time games)
+</ParamField>
+
+<ParamField body="days" type="integer">
+  Days per turn (for correspondence games, 1-15)
+</ParamField>
+
+<ParamField body="color" type="string" default="random">
+  Your color: `white`, `black`, or `random`
+</ParamField>
+
+<ParamField body="variant" type="string" default="standard">
+  Chess variant:
+  - `standard`
+  - `chess960`
+  - `crazyhouse`
+  - `antichess`
+  - `atomic`
+  - `horde`
+  - `kingOfTheHill`
+  - `racingKings`
+  - `threeCheck`
+</ParamField>
+
+<ParamField body="fen" type="string">
+  Custom initial position in FEN notation
+</ParamField>
+
+<ParamField body="keepAliveStream" type="boolean" default="false">
+  Keep the stream open to receive challenge status updates
+</ParamField>
+
+<ParamField body="rules" type="string[]">
+  Game rules/modifiers:
+  - `noAbort` - Players cannot abort the game
+  - `noRematch` - Players cannot offer a rematch
+  - `noGiveTime` - Players cannot give extra time
+  - `noClaimWin` - Players cannot claim victory when opponent is disconnected
+  - `noEarlyDraw` - Players cannot offer draw before ply 40
+</ParamField>
+
+<ParamField body="acceptByToken" type="string">
+  OAuth token of the opponent for instant acceptance
+</ParamField>
+
+#### Request
+
+<CodeGroup>
+```bash cURL
+# Create a 5+3 blitz challenge
+curl -X POST https://lichess.org/api/challenge/opponent_username \
+  -H "Authorization: Bearer <your_token>" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d 'rated=true&clock.limit=300&clock.increment=3&color=white'
+
+# Create correspondence challenge
+curl -X POST https://lichess.org/api/challenge/opponent_username \
+  -H "Authorization: Bearer <your_token>" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d 'rated=true&days=3&color=random'
+
+# Chess960 challenge
+curl -X POST https://lichess.org/api/challenge/opponent_username \
+  -H "Authorization: Bearer <your_token>" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d 'rated=false&clock.limit=600&clock.increment=0&variant=chess960'
+```
+
+```python Python
+import requests
+
+def create_challenge(username, token, rated=False, time_limit=300, 
+                     increment=0, color="random", variant="standard"):
+    headers = {"Authorization": f"Bearer {token}"}
+    url = f"https://lichess.org/api/challenge/{username}"
+    
+    data = {
+        "rated": rated,
+        "clock.limit": time_limit,
+        "clock.increment": increment,
+        "color": color,
+        "variant": variant
+    }
+    
+    response = requests.post(url, headers=headers, data=data)
+    
+    if response.status_code == 200:
+        challenge = response.json()
+        print(f"Challenge created: {challenge['challenge']['id']}")
+        print(f"URL: {challenge['challenge']['url']}")
+        return challenge
+    else:
+        error = response.json()
+        print(f"Error: {error.get('error', 'Unknown error')}")
+        return None
+
+# Create 3+2 blitz challenge
+create_challenge(
+    "opponent_username",
+    "lip_yourtoken",
+    rated=True,
+    time_limit=180,
+    increment=2,
+    color="white"
+)
+
+# Create chess960 challenge
+create_challenge(
+    "opponent_username",
+    "lip_yourtoken",
+    rated=False,
+    time_limit=600,
+    increment=5,
+    variant="chess960"
+)
+```
+
+```javascript JavaScript
+const token = "lip_yourtoken";
+
+async function createChallenge(username, options = {}) {
+  const defaults = {
+    rated: false,
+    "clock.limit": 300,
+    "clock.increment": 0,
+    color: "random",
+    variant: "standard"
+  };
+  
+  const params = { ...defaults, ...options };
+  const formData = new URLSearchParams(params);
+  
+  const response = await fetch(
+    `https://lichess.org/api/challenge/${username}`,
+    {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${token}` },
+      body: formData
+    }
+  );
+  
+  if (response.ok) {
+    const data = await response.json();
+    console.log("Challenge created:", data.challenge.url);
+    return data;
+  } else {
+    const error = await response.json();
+    console.error("Error:", error);
+    throw error;
+  }
+}
+
+// Create challenge
+await createChallenge("opponent_username", {
+  rated: true,
+  "clock.limit": 180,
+  "clock.increment": 2,
+  color: "white"
+});
+```
+</CodeGroup>
+
+#### Response
+
+<ResponseField name="challenge" type="object">
+  The created challenge
+  
+  <Expandable title="properties">
+    <ResponseField name="id" type="string">
+      Challenge ID
+    </ResponseField>
+    <ResponseField name="url" type="string">
+      Challenge URL
+    </ResponseField>
+    <ResponseField name="status" type="string">
+      Challenge status: `created`, `accepted`, `declined`, `canceled`
+    </ResponseField>
+    <ResponseField name="challenger" type="object">
+      Your user information
+    </ResponseField>
+    <ResponseField name="destUser" type="object">
+      Opponent user information
+    </ResponseField>
+    <ResponseField name="variant" type="object">
+      Game variant
+    </ResponseField>
+    <ResponseField name="rated" type="boolean">
+      Whether the game is rated
+    </ResponseField>
+    <ResponseField name="timeControl" type="object">
+      Time control information
+    </ResponseField>
+    <ResponseField name="color" type="string">
+      Assigned color
+    </ResponseField>
+    <ResponseField name="perf" type="object">
+      Performance category
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<CodeGroup>
+```json Success (200)
+{
+  "challenge": {
+    "id": "kZ4Zs7cN",
+    "url": "https://lichess.org/kZ4Zs7cN",
+    "status": "created",
+    "challenger": {
+      "id": "mybot",
+      "name": "MyBot",
+      "title": "BOT",
+      "rating": 1600,
+      "provisional": false,
+      "online": true
+    },
+    "destUser": {
+      "id": "opponent",
+      "name": "Opponent",
+      "rating": 1550,
+      "provisional": false,
+      "online": true
+    },
+    "variant": {
+      "key": "standard",
+      "name": "Standard",
+      "short": "Std"
+    },
+    "rated": true,
+    "timeControl": {
+      "type": "clock",
+      "limit": 180,
+      "increment": 2,
+      "show": "3+2"
+    },
+    "color": "white",
+    "perf": {
+      "name": "Blitz"
+    },
+    "direction": "out"
+  }
+}
+```
+
+```json Error (400)
+{
+  "error": "opponent_username does not follow you"
+}
+```
+
+```json Error (429)
+{
+  "error": "Too many requests. Try again in 60 seconds"
+}
+```
+</CodeGroup>
+
+---
+
+## Open Challenge
+
+### POST /api/challenge/open
+
+Create an open challenge that anyone can accept. Generates unique URLs for white and black.
+
+<Info>
+Open challenges are useful for creating challenge links that can be shared publicly or embedded on websites.
+</Info>
+
+#### Authentication
+
+Requires OAuth token with `challenge:write` scope, or anonymous access for verified users.
+
+#### Parameters
+
+Same parameters as [Create a Challenge](#create-a-challenge), except no `username` is needed.
+
+<ParamField body="rated" type="boolean" default="false">
+  Whether the game should be rated
+</ParamField>
+
+<ParamField body="clock.limit" type="integer">
+  Clock initial time in seconds
+</ParamField>
+
+<ParamField body="clock.increment" type="integer">
+  Clock increment in seconds
+</ParamField>
+
+<ParamField body="days" type="integer">
+  Days per turn (for correspondence, 1-15)
+</ParamField>
+
+<ParamField body="variant" type="string" default="standard">
+  Chess variant
+</ParamField>
+
+<ParamField body="fen" type="string">
+  Custom initial position in FEN
+</ParamField>
+
+<ParamField body="name" type="string">
+  Optional challenge name/description
+</ParamField>
+
+<ParamField body="rules" type="string[]">
+  Game rules (same as regular challenges)
+</ParamField>
+
+#### Request
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://lichess.org/api/challenge/open \
+  -H "Authorization: Bearer <your_token>" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d 'rated=false&clock.limit=600&clock.increment=5&name=Practice Game'
+```
+
+```python Python
+import requests
+
+def create_open_challenge(token, time_limit=300, increment=0, 
+                          rated=False, variant="standard", name=None):
+    headers = {"Authorization": f"Bearer {token}"}
+    url = "https://lichess.org/api/challenge/open"
+    
+    data = {
+        "rated": rated,
+        "clock.limit": time_limit,
+        "clock.increment": increment,
+        "variant": variant
+    }
+    
+    if name:
+        data["name"] = name
+    
+    response = requests.post(url, headers=headers, data=data)
+    
+    if response.status_code == 200:
+        challenge = response.json()
+        print(f"Challenge ID: {challenge['challenge']['id']}")
+        print(f"Play as White: {challenge['urlWhite']}")
+        print(f"Play as Black: {challenge['urlBlack']}")
+        return challenge
+    else:
+        print(f"Error: {response.json()}")
+        return None
+
+# Create open challenge
+create_open_challenge(
+    "lip_yourtoken",
+    time_limit=600,
+    increment=5,
+    rated=False,
+    name="Anyone can join!"
+)
+```
+</CodeGroup>
+
+#### Response
+
+<ResponseField name="challenge" type="object">
+  The created challenge
+</ResponseField>
+
+<ResponseField name="urlWhite" type="string">
+  URL for accepting as white
+</ResponseField>
+
+<ResponseField name="urlBlack" type="string">
+  URL for accepting as black
+</ResponseField>
+
+<CodeGroup>
+```json Success (200)
+{
+  "challenge": {
+    "id": "Xm39fB2J",
+    "url": "https://lichess.org/Xm39fB2J",
+    "status": "created",
+    "variant": {
+      "key": "standard",
+      "name": "Standard"
+    },
+    "rated": false,
+    "timeControl": {
+      "type": "clock",
+      "limit": 600,
+      "increment": 5,
+      "show": "10+5"
+    },
+    "perf": {
+      "name": "Rapid"
+    },
+    "direction": "out",
+    "open": true
+  },
+  "urlWhite": "https://lichess.org/Xm39fB2J?color=white",
+  "urlBlack": "https://lichess.org/Xm39fB2J?color=black"
+}
+```
+</CodeGroup>
+
+---
+
+## Get Challenge Info
+
+### GET /api/challenge/{challengeId}/show
+
+Get information about a challenge.
+
+#### Authentication
+
+Requires OAuth token with `challenge:read` scope.
+
+#### Request
+
+<CodeGroup>
+```bash cURL
+curl https://lichess.org/api/challenge/kZ4Zs7cN/show \
+  -H "Authorization: Bearer <your_token>"
+```
+
+```python Python
+import requests
+
+def get_challenge(challenge_id, token):
+    headers = {"Authorization": f"Bearer {token}"}
+    url = f"https://lichess.org/api/challenge/{challenge_id}/show"
+    
+    response = requests.get(url, headers=headers)
+    
+    if response.status_code == 200:
+        return response.json()
+    else:
+        return None
+
+challenge = get_challenge("kZ4Zs7cN", "lip_yourtoken")
+if challenge:
+    print(f"Status: {challenge['challenge']['status']}")
+```
+</CodeGroup>
+
+---
+
+## List Challenges
+
+### GET /api/challenge
+
+List all challenges created by or targeted at the authenticated user.
+
+#### Authentication
+
+Requires OAuth token.
+
+#### Request
+
+<CodeGroup>
+```bash cURL
+curl https://lichess.org/api/challenge \
+  -H "Authorization: Bearer <your_token>"
+```
+
+```python Python
+import requests
+
+def list_challenges(token):
+    headers = {"Authorization": f"Bearer {token}"}
+    url = "https://lichess.org/api/challenge"
+    
+    response = requests.get(url, headers=headers)
+    
+    if response.status_code == 200:
+        data = response.json()
+        print(f"Incoming: {len(data.get('in', []))}")
+        print(f"Outgoing: {len(data.get('out', []))}")
+        return data
+    else:
+        return None
+
+challenges = list_challenges("lip_yourtoken")
+```
+</CodeGroup>
+
+#### Response
+
+<ResponseField name="in" type="array">
+  Challenges received
+</ResponseField>
+
+<ResponseField name="out" type="array">
+  Challenges sent
+</ResponseField>
+
+<CodeGroup>
+```json Response (200)
+{
+  "in": [
+    {
+      "id": "kZ4Zs7cN",
+      "url": "https://lichess.org/kZ4Zs7cN",
+      "status": "created",
+      "challenger": {
+        "id": "player1",
+        "name": "Player1",
+        "rating": 1500
+      },
+      "variant": {
+        "key": "standard",
+        "name": "Standard"
+      },
+      "rated": true,
+      "timeControl": {
+        "type": "clock",
+        "limit": 180,
+        "increment": 2,
+        "show": "3+2"
+      }
+    }
+  ],
+  "out": []
+}
+```
+</CodeGroup>
+
+---
+
+## Challenge Handling Best Practices
+
+### Auto-Accept Logic
+
+<CodeGroup>
+```python Python
+import requests
+import json
+
+class ChallengeFilter:
+    def __init__(self, token):
+        self.token = token
+        self.headers = {"Authorization": f"Bearer {token}"}
+        self.base_url = "https://lichess.org"
+    
+    def should_accept(self, challenge):
+        """Determine if we should accept this challenge"""
+        
+        # Only standard chess
+        if challenge['variant']['key'] != 'standard':
+            return False, 'variant'
+        
+        # Only rated games
+        if not challenge['rated']:
+            return False, 'casual'
+        
+        # Check time control
+        tc = challenge.get('timeControl', {})
+        if tc.get('type') == 'clock':
+            limit = tc.get('limit', 0)
+            increment = tc.get('increment', 0)
+            
+            # Only blitz (3-5 minutes)
+            if not (180 <= limit <= 300):
+                return False, 'timeControl'
+        
+        # Check opponent rating
+        challenger = challenge.get('challenger', {})
+        rating = challenger.get('rating', 0)
+        
+        # Only play within rating range
+        if abs(rating - 1600) > 200:  # Our rating ±200
+            return False, 'generic'
+        
+        return True, None
+    
+    def handle_challenge(self, challenge):
+        """Accept or decline a challenge based on criteria"""
+        challenge_id = challenge['id']
+        should_accept, reason = self.should_accept(challenge)
+        
+        if should_accept:
+            url = f"{self.base_url}/api/challenge/{challenge_id}/accept"
+            response = requests.post(url, headers=self.headers)
+            
+            if response.status_code == 200:
+                print(f"Accepted challenge from {challenge['challenger']['name']}")
+            else:
+                print(f"Failed to accept: {response.json()}")
+        else:
+            url = f"{self.base_url}/api/challenge/{challenge_id}/decline"
+            data = {"reason": reason}
+            response = requests.post(
+                url, 
+                headers={**self.headers, "Content-Type": "application/json"},
+                json=data
+            )
+            
+            print(f"Declined challenge (reason: {reason})")
+
+# Usage in event stream
+filter = ChallengeFilter("lip_yourtoken")
+
+# When receiving a challenge event:
+# filter.handle_challenge(event['challenge'])
+```
+</CodeGroup>
+
+### Rate Limiting
+
+Be aware of rate limits:
+- **Bot concurrent games**: Typically 5 active games maximum
+- **Challenge creation**: Limited to prevent spam
+- **Challenge to specific user**: Higher rate limit for friends, lower for strangers
+
+### Error Handling
+
+Common errors when creating challenges:
+- `"No such user"` - Username doesn't exist
+- `"User does not follow you"` - Required for non-friends in some cases
+- `"Cannot challenge yourself"` - Self-explanatory
+- `"This user does not accept challenges"` - User has disabled challenges
+- `"Too many requests"` - Rate limited
+
+---
+
+## See Also
+
+- [Bot Account](/api/bot/account) - Account setup
+- [Playing Games](/api/bot/playing) - Game streaming and moves
+- [Event Stream](/api/bot/playing#stream-events) - Receive challenge notifications

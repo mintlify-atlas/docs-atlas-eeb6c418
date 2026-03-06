@@ -1,0 +1,297 @@
+---
+title: "Stream TV Channel Feed"
+api: "GET /api/tv/feed"
+description: "Stream real-time updates from a Lichess TV channel as games progress"
+---
+
+## Overview
+
+Stream the events of the current TV game for a specific channel. This endpoint uses Server-Sent Events (SSE) to push updates in real-time as moves are played.
+
+## Endpoints
+
+### Stream Default Channel (Best)
+
+```bash
+GET https://lichess.org/api/tv/feed
+```
+
+Streams the "Best" channel (top-rated games).
+
+### Stream Specific Channel
+
+```bash
+GET https://lichess.org/api/tv/:channel/feed
+```
+
+Streams a specific TV channel.
+
+## Authentication
+
+No authentication required. These are public endpoints.
+
+## Parameters
+
+<ParamField path="channel" type="string" optional>
+  The TV channel to stream. If omitted, defaults to "best".
+  
+  **Available channels:**
+  - `best` - Top Rated (2150+ standard games)
+  - `bullet` - Bullet games
+  - `blitz` - Blitz games
+  - `rapid` - Rapid games
+  - `classical` - Classical games
+  - `chess960` - Chess960 variant
+  - `kingOfTheHill` - King of the Hill
+  - `threeCheck` - Three-check
+  - `antichess` - Antichess
+  - `atomic` - Atomic
+  - `horde` - Horde
+  - `racingKings` - Racing Kings
+  - `crazyhouse` - Crazyhouse
+  - `ultraBullet` - UltraBullet
+  - `bot` - Bot games
+  - `computer` - Computer games
+</ParamField>
+
+<ParamField query="bc" type="boolean" default="false" optional>
+  Enable backwards compatibility mode. When `true`, uses Server-Sent Events format. When `false` (default), uses newline-delimited JSON (NDJSON).
+</ParamField>
+
+## Response Format
+
+### NDJSON Format (Default)
+
+By default, the stream returns newline-delimited JSON. Each line is a complete JSON object representing a game event.
+
+### SSE Format
+
+When `bc=true`, the stream uses Server-Sent Events format with `text/event-stream` content type.
+
+## Example Requests
+
+```bash cURL - Default Channel
+curl https://lichess.org/api/tv/feed
+```
+
+```bash cURL - Specific Channel
+curl https://lichess.org/api/tv/blitz/feed
+```
+
+```bash cURL - SSE Format
+curl https://lichess.org/api/tv/feed?bc=true
+```
+
+```javascript JavaScript - NDJSON
+const response = await fetch('https://lichess.org/api/tv/bullet/feed');
+const reader = response.body.getReader();
+const decoder = new TextDecoder();
+
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+  
+  const lines = decoder.decode(value).split('\n');
+  for (const line of lines) {
+    if (line.trim()) {
+      const event = JSON.parse(line);
+      console.log('TV Update:', event);
+    }
+  }
+}
+```
+
+```javascript JavaScript - EventSource (SSE)
+const eventSource = new EventSource('https://lichess.org/api/tv/feed?bc=true');
+
+eventSource.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  console.log('TV Update:', data);
+};
+
+eventSource.onerror = (error) => {
+  console.error('Connection error:', error);
+  eventSource.close();
+};
+```
+
+```python Python
+import requests
+import json
+
+url = 'https://lichess.org/api/tv/blitz/feed'
+
+with requests.get(url, stream=True) as response:
+    for line in response.iter_lines():
+        if line:
+            event = json.loads(line)
+            print('TV Update:', event)
+```
+
+## Event Types
+
+The stream emits various game-related events:
+
+### Featured Game Event
+
+When a new game becomes featured on the channel:
+
+```json
+{
+  "t": "featured",
+  "d": {
+    "id": "q7ZvsdUF",
+    "orientation": "white",
+    "players": [
+      {
+        "color": "white",
+        "user": {
+          "name": "Magnus",
+          "id": "magnus",
+          "title": "GM"
+        },
+        "rating": 2847
+      },
+      {
+        "color": "black",
+        "user": {
+          "name": "Hikaru",
+          "id": "hikaru",
+          "title": "GM"
+        },
+        "rating": 2832
+      }
+    ]
+  }
+}
+```
+
+### Move Event
+
+When a move is played:
+
+```json
+{
+  "t": "ply",
+  "d": {
+    "ply": 23,
+    "uci": "e2e4",
+    "san": "e4",
+    "fen": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+    "clock": {
+      "white": 600,
+      "black": 590
+    }
+  }
+}
+```
+
+### Game End Event
+
+When the featured game ends:
+
+```json
+{
+  "t": "end",
+  "d": {
+    "winner": "white",
+    "status": "mate"
+  }
+}
+```
+
+## Response Fields
+
+<ResponseField name="t" type="string">
+  Event type: `featured`, `ply`, `end`, etc.
+</ResponseField>
+
+<ResponseField name="d" type="object">
+  Event data - structure varies by event type
+  
+  <Expandable title="Featured Game Fields">
+    <ResponseField name="id" type="string">
+      Game ID (8 characters)
+    </ResponseField>
+    
+    <ResponseField name="orientation" type="string">
+      Board orientation ("white" or "black")
+    </ResponseField>
+    
+    <ResponseField name="players" type="array">
+      Array of player objects with color, user info, and rating
+    </ResponseField>
+  </Expandable>
+  
+  <Expandable title="Move (Ply) Fields">
+    <ResponseField name="ply" type="integer">
+      Move number (half-moves)
+    </ResponseField>
+    
+    <ResponseField name="uci" type="string">
+      Move in UCI notation (e.g., "e2e4")
+    </ResponseField>
+    
+    <ResponseField name="san" type="string">
+      Move in Standard Algebraic Notation (e.g., "e4")
+    </ResponseField>
+    
+    <ResponseField name="fen" type="string">
+      Position after the move in FEN notation
+    </ResponseField>
+    
+    <ResponseField name="clock" type="object" optional>
+      Clock times in seconds for both players
+    </ResponseField>
+  </Expandable>
+  
+  <Expandable title="Game End Fields">
+    <ResponseField name="winner" type="string" optional>
+      Winner color ("white" or "black") or omitted for draws
+    </ResponseField>
+    
+    <ResponseField name="status" type="string">
+      Game termination reason: "mate", "resign", "timeout", "draw", "stalemate", etc.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Connection Management
+
+- The stream is kept alive with periodic keep-alive messages
+- When a featured game ends, a new game from the channel will automatically be featured
+- Connections should be resilient to temporary disconnections and reconnect automatically
+- Games are refreshed based on activity - inactive games are replaced
+
+## Rate Limiting
+
+- Persistent connections are allowed but limited per IP address
+- Maximum of 4 concurrent streams per IP for standard users
+- Do not poll this endpoint - it's designed to be streamed continuously
+
+## Channel Selection Criteria
+
+Each channel selects games based on specific criteria:
+
+- **Rating filters**: Most channels require minimum ratings (e.g., Best: 2150+, Blitz: 2000+)
+- **Time controls**: Speed-based channels filter by game time control
+- **Variants**: Variant channels show only that specific chess variant
+- **Recency**: Games must have recent moves (freshness varies by channel)
+- **Bot exclusion**: Most channels exclude bot games (except the Bot channel)
+
+## Notes
+
+- The stream automatically switches to new games when the current one ends or becomes stale
+- Not all channels have active games at all times
+- The default channel ("best") typically has the most consistent availability
+- Use NDJSON format (default) for simpler parsing in modern applications
+
+## Related Endpoints
+
+- [Get Current TV Channels](/api/tv/channels) - Get current champions for all channels
+- [Event Stream](/api/streaming/events) - Stream personal game and challenge events
+
+## Source Code Reference
+
+- Controller: `app/controllers/Tv.scala:92-108`
+- Routes: `conf/routes:43-44`
